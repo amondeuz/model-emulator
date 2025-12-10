@@ -1,0 +1,18 @@
+{
+  "daemon": true,
+  "run": [
+    {
+      "method": "log",
+      "params": {
+        "raw": "Starting Puter Local Model Emulator..."
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "node server/index.js",
+        "venv": false
+      }
+    }
+  ]
+}

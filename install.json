@@ -1,0 +1,16 @@
+{
+  "run": [
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "npm install"
+      }
+    },
+    {
+      "method": "log",
+      "params": {
+        "raw": "Installation complete! Use 'Start Server' to run the emulator."
+      }
+    }
+  ]
+}

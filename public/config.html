@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Puter Model Emulator - Configuration</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .section {
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+      font-weight: normal;
+    }
+
+    select, input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: monospace;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: #4a9eff;
+    }
+
+    .model-info {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 8px;
+      font-size: 13px;
+      color: #555;
+    }
+
+    .model-tags {
+      margin-top: 6px;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #e3f2fd;
+      color: #1976d2;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      margin-right: 4px;
+      margin-top: 4px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 30px;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary {
+      background: #4a9eff;
+      color: white;
+      flex: 1;
+    }
+
+    .btn-primary:hover {
+      background: #3a8eef;
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .status-box {
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+
+    .status-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status-error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status-info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .current-config {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 30px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .current-config h3 {
+      font-size: 14px;
+      margin-bottom: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    }
+
+    .config-item {
+      padding: 4px 0;
+      color: #555;
+    }
+
+    .endpoint-info {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 30px;
+    }
+
+    .endpoint-info h3 {
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: #856404;
+    }
+
+    .endpoint-url {
+      font-family: monospace;
+      font-size: 13px;
+      color: #333;
+      background: white;
+      padding: 8px;
+      border-radius: 3px;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Puter Local Model Emulator</h1>
+    <p class="subtitle">Configure your local OpenAI-compatible endpoint backed by Puter AI</p>
+
+    <div class="endpoint-info">
+      <h3>OpenAI Endpoint URL:</h3>
+      <div class="endpoint-url" id="endpoint-url">Loading...</div>
+    </div>
+
+    <div class="current-config">
+      <h3>Current Configuration</h3>
+      <div class="config-item"><strong>Backend Model:</strong> <span id="current-model">Loading...</span></div>
+      <div class="config-item"><strong>Spoofed Model:</strong> <span id="current-spoofed">Loading...</span></div>
+      <div class="config-item"><strong>Port:</strong> <span id="current-port">Loading...</span></div>
+    </div>
+
+    <form id="config-form">
+      <div class="section">
+        <label>
+          Puter Backend Model
+          <div class="help-text">Select which Puter AI model to use for completions</div>
+        </label>
+        <select id="puter-model" name="puterModel" required>
+          <option value="">Loading models...</option>
+        </select>
+        <div id="model-info" class="model-info" style="display: none;">
+          <div id="model-description"></div>
+          <div class="model-tags" id="model-tags"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <label>
+          Spoofed OpenAI Model ID
+          <div class="help-text">What model name to report to clients (leave empty to use incoming model name)</div>
+        </label>
+        <input
+          type="text"
+          id="spoofed-model"
+          name="spoofedOpenAIModelId"
+          placeholder="e.g., gpt-4o-mini, claude-3-5-sonnet-20241022"
+          list="common-models"
+        >
+        <datalist id="common-models">
+          <option value="gpt-4o">
+          <option value="gpt-4o-mini">
+          <option value="gpt-4-turbo">
+          <option value="gpt-3.5-turbo">
+          <option value="claude-3-5-sonnet-20241022">
+        </datalist>
+      </div>
+
+      <div class="section">
+        <label>
+          Server Port
+          <div class="help-text">Port for the local server (requires restart)</div>
+        </label>
+        <input
+          type="number"
+          id="port"
+          name="port"
+          min="1024"
+          max="65535"
+          placeholder="11434"
+        >
+      </div>
+
+      <div class="button-group">
+        <button type="submit" class="btn-primary">Save Configuration</button>
+        <button type="button" class="btn-secondary" onclick="window.location.reload()">Reload</button>
+      </div>
+    </form>
+
+    <div id="status-message" style="display: none;"></div>
+  </div>
+
+  <script>
+    let currentConfig = null;
+    let modelsRegistry = null;
+
+    // Load current configuration
+    async function loadConfig() {
+      try {
+        const response = await fetch('/config/current');
+        const data = await response.json();
+        currentConfig = data.config;
+        modelsRegistry = data.models;
+
+        // Update current config display
+        document.getElementById('current-model').textContent = currentConfig.puterModel || 'Not set';
+        document.getElementById('current-spoofed').textContent = currentConfig.spoofedOpenAIModelId || 'Not set';
+        document.getElementById('current-port').textContent = currentConfig.port || '11434';
+
+        // Update endpoint URL
+        const port = currentConfig.port || 11434;
+        document.getElementById('endpoint-url').textContent = `http://localhost:${port}/v1/chat/completions`;
+
+        // Populate model dropdown
+        populateModels();
+
+        // Set form values
+        document.getElementById('puter-model').value = currentConfig.puterModel || '';
+        document.getElementById('spoofed-model').value = currentConfig.spoofedOpenAIModelId || '';
+        document.getElementById('port').value = currentConfig.port || '';
+
+        // Trigger model info update
+        updateModelInfo();
+      } catch (error) {
+        console.error('Failed to load config:', error);
+        showStatus('Failed to load configuration', 'error');
+      }
+    }
+
+    // Populate models dropdown from registry
+    function populateModels() {
+      const select = document.getElementById('puter-model');
+      select.innerHTML = '<option value="">Select a model...</option>';
+
+      if (modelsRegistry && modelsRegistry.models) {
+        modelsRegistry.models.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model.id;
+          option.textContent = `${model.name} - ${model.provider}`;
+          select.appendChild(option);
+        });
+      }
+    }
+
+    // Update model info display
+    function updateModelInfo() {
+      const selectedModelId = document.getElementById('puter-model').value;
+      const modelInfo = document.getElementById('model-info');
+      const modelDescription = document.getElementById('model-description');
+      const modelTags = document.getElementById('model-tags');
+
+      if (!selectedModelId || !modelsRegistry) {
+        modelInfo.style.display = 'none';
+        return;
+      }
+
+      const model = modelsRegistry.models.find(m => m.id === selectedModelId);
+      if (model) {
+        modelDescription.textContent = model.description;
+        modelTags.innerHTML = model.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+        modelInfo.style.display = 'block';
+      } else {
+        modelInfo.style.display = 'none';
+      }
+    }
+
+    // Handle form submission
+    document.getElementById('config-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const data = {
+        puterModel: formData.get('puterModel'),
+        spoofedOpenAIModelId: formData.get('spoofedOpenAIModelId'),
+        port: formData.get('port') ? parseInt(formData.get('port'), 10) : undefined
+      };
+
+      try {
+        const response = await fetch('/config/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showStatus('Configuration saved successfully! Changes will take effect immediately.', 'success');
+          setTimeout(() => loadConfig(), 1000);
+        } else {
+          showStatus(result.error || 'Failed to save configuration', 'error');
+        }
+      } catch (error) {
+        console.error('Save error:', error);
+        showStatus('Failed to save configuration', 'error');
+      }
+    });
+
+    // Show status message
+    function showStatus(message, type) {
+      const statusDiv = document.getElementById('status-message');
+      statusDiv.textContent = message;
+      statusDiv.className = `status-box status-${type}`;
+      statusDiv.style.display = 'block';
+
+      if (type === 'success') {
+        setTimeout(() => {
+          statusDiv.style.display = 'none';
+        }, 5000);
+      }
+    }
+
+    // Listen for model selection changes
+    document.getElementById('puter-model').addEventListener('change', updateModelInfo);
+
+    // Load config on page load
+    loadConfig();
+  </script>
+</body>
+</html>

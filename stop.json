@@ -1,0 +1,13 @@
+{
+  "run": [
+    {
+      "method": "shell.run",
+      "params": {
+        "message": [
+          "{{platform === 'win32' ? 'taskkill /F /IM node.exe /FI \"WINDOWTITLE eq Puter*\"' : 'pkill -f \"node server/index.js\"'}}",
+          "echo 'Server stopped'"
+        ]
+      }
+    }
+  ]
+}

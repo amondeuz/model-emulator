@@ -1,24 +1,16 @@
 /**
- * Simple logging utility for the model emulator
- * Logs requests, responses, and errors with timestamps
+ * Logging utility for the model emulator
  */
 
 const { getConfig } = require('./config');
 
-// Store last successful completion and last error for health endpoint
 let lastSuccessfulCompletion = null;
 let lastError = null;
 
-/**
- * Format timestamp for logs
- */
 function timestamp() {
   return new Date().toISOString();
 }
 
-/**
- * Log a chat completion request
- */
 function logRequest(data) {
   const config = getConfig();
   if (!config.logging?.logRequests) return;
@@ -27,9 +19,6 @@ function logRequest(data) {
   console.log(`[${timestamp()}] REQUEST: incoming_model=${incomingModel}, puter_model=${puterModel}, messages=${messageCount}, status=${status}`);
 }
 
-/**
- * Log a successful completion
- */
 function logSuccess(data) {
   const config = getConfig();
   if (!config.logging?.enabled) return;
@@ -44,18 +33,11 @@ function logSuccess(data) {
   };
 }
 
-/**
- * Log an error with details
- */
 function logError(error, context = {}) {
   const config = getConfig();
   if (!config.logging?.logErrors) return;
 
-  console.error(`[${timestamp()}] ERROR:`, {
-    message: error.message,
-    stack: error.stack,
-    context
-  });
+  console.error(`[${timestamp()}] ERROR:`, { message: error.message, context });
 
   lastError = {
     timestamp: Date.now(),
@@ -64,35 +46,12 @@ function logError(error, context = {}) {
   };
 }
 
-/**
- * Log general info message
- */
 function logInfo(message) {
   console.log(`[${timestamp()}] INFO: ${message}`);
 }
 
-/**
- * Get health information for the health endpoint
- */
 function getHealthInfo() {
-  return {
-    lastSuccessfulCompletion,
-    lastError
-  };
+  return { lastSuccessfulCompletion, lastError };
 }
 
-/**
- * Clear error state (useful after recovery)
- */
-function clearError() {
-  lastError = null;
-}
-
-module.exports = {
-  logRequest,
-  logSuccess,
-  logError,
-  logInfo,
-  getHealthInfo,
-  clearError
-};
+module.exports = { logRequest, logSuccess, logError, logInfo, getHealthInfo };

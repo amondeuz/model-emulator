@@ -159,13 +159,35 @@ app.get('/', (req, res) => {
 });
 
 /**
+ * Graceful shutdown handler
+ */
+function gracefulShutdown(signal, server) {
+  logInfo(`Received ${signal}, shutting down gracefully...`);
+  
+  if (server) {
+    server.close(() => {
+      logInfo('Server closed');
+      process.exit(0);
+    });
+    
+    // Force close after 5 seconds
+    setTimeout(() => {
+      logError(new Error('Forced shutdown after timeout'));
+      process.exit(1);
+    }, 5000);
+  } else {
+    process.exit(0);
+  }
+}
+
+/**
  * Start server
  */
 function startServer() {
   const config = getConfig();
   const port = process.env.PORT || config.port || 11434;
 
-  app.listen(port, '127.0.0.1', () => {
+  const server = app.listen(port, '127.0.0.1', () => {
     logInfo(`Puter Local Model Emulator started`);
     logInfo(`Listening on http://localhost:${port}`);
     logInfo(`OpenAI endpoint: http://localhost:${port}/v1/chat/completions`);
@@ -174,6 +196,12 @@ function startServer() {
     logInfo(`Backend model: ${config.puterModel}`);
     logInfo(`Spoofed model: ${config.spoofedOpenAIModelId}`);
   });
+
+  // Register shutdown handlers
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM', server));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT', server));
+
+  return server;
 }
 
 // Start the server

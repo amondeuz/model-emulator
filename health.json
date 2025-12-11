@@ -1,9 +1,16 @@
 {
   "run": [
     {
-      "method": "shell.run",
+      "method": "net.request",
       "params": {
-        "message": "curl -s http://localhost:11434/health | json_pp || echo 'Server is not running or health endpoint unavailable'"
+        "url": "http://localhost:11434/health",
+        "method": "GET"
+      }
+    },
+    {
+      "method": "log",
+      "params": {
+        "json2": "{{input}}"
       }
     }
   ]

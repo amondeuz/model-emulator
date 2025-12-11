@@ -15,15 +15,40 @@
  * Endpoints:
  * - POST /v1/chat/completions - OpenAI-compatible chat endpoint
  * - GET /health - Health check and diagnostics
- * - GET /config - Configuration UI
+ * - GET /config/current - Get current configuration
  * - POST /config/update - Update configuration
+ * - GET /api/models - Get cached model list
+ * - POST /api/models/refresh - Refresh model list from Puter
+ * - GET /api/saved-configs - Get saved configurations
+ * - POST /api/saved-configs - Add new saved configuration
+ * - PUT /api/saved-configs/:id - Update saved configuration name
+ * - DELETE /api/saved-configs/:id - Delete saved configuration
+ * - POST /api/emulator/start - Start the emulator
+ * - POST /api/emulator/stop - Stop the emulator
+ * - GET /api/emulator/status - Get emulator and Puter status
  */
 
 const express = require('express');
 const path = require('path');
-const { getConfig, updateConfig, loadModels } = require('./config');
+const {
+  getConfig,
+  updateConfig,
+  getModelsCache,
+  saveModelsCache,
+  getSavedConfigs,
+  addSavedConfig,
+  updateSavedConfigName,
+  deleteSavedConfig,
+  getSavedConfigById,
+  isEmulatorActive,
+  startEmulator,
+  stopEmulator,
+  getLastConfig,
+  modelExistsInCache
+} = require('./config');
 const { handleChatCompletion } = require('./openai-adapter');
 const { logInfo, logError, getHealthInfo } = require('./logger');
+const { listModels, checkConnectivity, isPuterOnline } = require('./puter-client');
 
 // Initialize Express app
 const app = express();
@@ -34,6 +59,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// ============================================================================
+// OPENAI COMPATIBLE ENDPOINT
+// ============================================================================
 
 /**
  * POST /v1/chat/completions
@@ -48,11 +77,15 @@ app.post('/v1/chat/completions', async (req, res) => {
     res.status(500).json({
       error: {
         message: 'Internal server error',
-        type: 'server_error'
+        type: 'internal_server_error'
       }
     });
   }
 });
+
+// ============================================================================
+// HEALTH AND STATUS
+// ============================================================================
 
 /**
  * GET /health
@@ -65,6 +98,8 @@ app.get('/health', (req, res) => {
   const response = {
     status: 'ok',
     timestamp: new Date().toISOString(),
+    emulatorActive: isEmulatorActive(),
+    puterOnline: isPuterOnline(),
     config: {
       backend: config.backend,
       puterModel: config.puterModel,
@@ -90,16 +125,58 @@ app.get('/health', (req, res) => {
 });
 
 /**
+ * GET /api/emulator/status
+ * Get emulator and Puter connectivity status
+ */
+app.get('/api/emulator/status', async (req, res) => {
+  try {
+    const config = getConfig();
+    const online = await checkConnectivity();
+
+    res.json({
+      emulatorActive: isEmulatorActive(),
+      puterOnline: online,
+      currentConfig: {
+        puterModel: config.puterModel,
+        spoofedOpenAIModelId: config.spoofedOpenAIModelId
+      },
+      lastConfig: getLastConfig()
+    });
+  } catch (error) {
+    res.json({
+      emulatorActive: isEmulatorActive(),
+      puterOnline: false,
+      currentConfig: {
+        puterModel: getConfig().puterModel,
+        spoofedOpenAIModelId: getConfig().spoofedOpenAIModelId
+      },
+      lastConfig: getLastConfig()
+    });
+  }
+});
+
+// ============================================================================
+// CONFIGURATION ENDPOINTS
+// ============================================================================
+
+/**
  * GET /config/current
  * Get current configuration as JSON
  */
 app.get('/config/current', (req, res) => {
   try {
     const config = getConfig();
-    const models = loadModels();
+    const modelsCache = getModelsCache();
+    const savedConfigs = getSavedConfigs();
+
     res.json({
       config,
-      models
+      models: modelsCache.models,
+      modelsLastUpdated: modelsCache.lastUpdated,
+      savedConfigs,
+      emulatorActive: isEmulatorActive(),
+      puterOnline: isPuterOnline(),
+      lastConfig: getLastConfig()
     });
   } catch (error) {
     logError(error, { endpoint: '/config/current' });
@@ -150,6 +227,261 @@ app.post('/config/update', (req, res) => {
   }
 });
 
+// ============================================================================
+// MODELS CACHE ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/models
+ * Get cached model list
+ */
+app.get('/api/models', (req, res) => {
+  try {
+    const cache = getModelsCache();
+    res.json({
+      models: cache.models,
+      lastUpdated: cache.lastUpdated,
+      puterOnline: isPuterOnline()
+    });
+  } catch (error) {
+    logError(error, { endpoint: '/api/models' });
+    res.status(500).json({ error: 'Failed to get models' });
+  }
+});
+
+/**
+ * POST /api/models/refresh
+ * Refresh model list from Puter
+ */
+app.post('/api/models/refresh', async (req, res) => {
+  try {
+    const models = await listModels();
+    saveModelsCache(models);
+
+    res.json({
+      success: true,
+      models: models,
+      lastUpdated: Date.now(),
+      puterOnline: true
+    });
+  } catch (error) {
+    logError(error, { endpoint: '/api/models/refresh' });
+    res.status(503).json({
+      success: false,
+      error: 'Failed to refresh models from Puter',
+      message: error.message,
+      puterOnline: false
+    });
+  }
+});
+
+// ============================================================================
+// SAVED CONFIGURATIONS ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/saved-configs
+ * Get all saved configurations
+ */
+app.get('/api/saved-configs', (req, res) => {
+  try {
+    const configs = getSavedConfigs();
+    res.json({ configs });
+  } catch (error) {
+    logError(error, { endpoint: '/api/saved-configs' });
+    res.status(500).json({ error: 'Failed to get saved configurations' });
+  }
+});
+
+/**
+ * POST /api/saved-configs
+ * Add new saved configuration
+ */
+app.post('/api/saved-configs', (req, res) => {
+  try {
+    const { name, puterModelId, spoofedOpenAIModelId } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Configuration name is required' });
+    }
+
+    if (!puterModelId) {
+      return res.status(400).json({ error: 'Puter model ID is required' });
+    }
+
+    const newConfig = addSavedConfig(name.trim(), puterModelId, spoofedOpenAIModelId);
+
+    if (newConfig) {
+      res.json({
+        success: true,
+        config: newConfig,
+        message: 'Configuration saved successfully'
+      });
+    } else {
+      throw new Error('Failed to save configuration');
+    }
+  } catch (error) {
+    logError(error, { endpoint: '/api/saved-configs POST' });
+    res.status(500).json({ error: 'Failed to save configuration' });
+  }
+});
+
+/**
+ * PUT /api/saved-configs/:id
+ * Update saved configuration name
+ */
+app.put('/api/saved-configs/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Configuration name is required' });
+    }
+
+    const existingConfig = getSavedConfigById(id);
+    if (!existingConfig) {
+      return res.status(404).json({ error: 'Configuration not found' });
+    }
+
+    const success = updateSavedConfigName(id, name.trim());
+
+    if (success) {
+      res.json({
+        success: true,
+        message: 'Configuration renamed successfully'
+      });
+    } else {
+      throw new Error('Failed to rename configuration');
+    }
+  } catch (error) {
+    logError(error, { endpoint: '/api/saved-configs PUT' });
+    res.status(500).json({ error: 'Failed to rename configuration' });
+  }
+});
+
+/**
+ * DELETE /api/saved-configs/:id
+ * Delete saved configuration
+ */
+app.delete('/api/saved-configs/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existingConfig = getSavedConfigById(id);
+    if (!existingConfig) {
+      return res.status(404).json({ error: 'Configuration not found' });
+    }
+
+    const success = deleteSavedConfig(id);
+
+    if (success) {
+      res.json({
+        success: true,
+        message: 'Configuration deleted successfully'
+      });
+    } else {
+      throw new Error('Failed to delete configuration');
+    }
+  } catch (error) {
+    logError(error, { endpoint: '/api/saved-configs DELETE' });
+    res.status(500).json({ error: 'Failed to delete configuration' });
+  }
+});
+
+// ============================================================================
+// EMULATOR CONTROL ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/emulator/start
+ * Start the emulator with specified configuration
+ */
+app.post('/api/emulator/start', async (req, res) => {
+  try {
+    const { puterModelId, spoofedOpenAIModelId } = req.body;
+
+    if (!puterModelId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Puter model ID is required'
+      });
+    }
+
+    // Check Puter connectivity
+    const online = await checkConnectivity();
+    if (!online) {
+      return res.status(503).json({
+        success: false,
+        error: 'Puter is offline. Cannot start emulator.'
+      });
+    }
+
+    // Validate model exists in cache
+    const cache = getModelsCache();
+    const modelExists = cache.models.some(m => m.id === puterModelId);
+    if (!modelExists && cache.models.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Model "${puterModelId}" not found in available models`
+      });
+    }
+
+    // Start emulator
+    const success = startEmulator(puterModelId, spoofedOpenAIModelId);
+
+    if (success) {
+      logInfo(`Emulator started with model: ${puterModelId}`);
+      res.json({
+        success: true,
+        message: 'Emulator started successfully',
+        config: {
+          puterModel: puterModelId,
+          spoofedOpenAIModelId: spoofedOpenAIModelId || ''
+        }
+      });
+    } else {
+      throw new Error('Failed to start emulator');
+    }
+  } catch (error) {
+    logError(error, { endpoint: '/api/emulator/start' });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start emulator'
+    });
+  }
+});
+
+/**
+ * POST /api/emulator/stop
+ * Stop the emulator
+ */
+app.post('/api/emulator/stop', (req, res) => {
+  try {
+    const success = stopEmulator();
+
+    if (success) {
+      logInfo('Emulator stopped');
+      res.json({
+        success: true,
+        message: 'Emulator stopped successfully'
+      });
+    } else {
+      throw new Error('Failed to stop emulator');
+    }
+  } catch (error) {
+    logError(error, { endpoint: '/api/emulator/stop' });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to stop emulator'
+    });
+  }
+});
+
+// ============================================================================
+// ROOT AND STATIC
+// ============================================================================
+
 /**
  * GET /
  * Root endpoint - redirect to config UI
@@ -158,18 +490,22 @@ app.get('/', (req, res) => {
   res.redirect('/config.html');
 });
 
+// ============================================================================
+// SERVER LIFECYCLE
+// ============================================================================
+
 /**
  * Graceful shutdown handler
  */
 function gracefulShutdown(signal, server) {
   logInfo(`Received ${signal}, shutting down gracefully...`);
-  
+
   if (server) {
     server.close(() => {
       logInfo('Server closed');
       process.exit(0);
     });
-    
+
     // Force close after 5 seconds
     setTimeout(() => {
       logError(new Error('Forced shutdown after timeout'));
@@ -177,6 +513,20 @@ function gracefulShutdown(signal, server) {
     }, 5000);
   } else {
     process.exit(0);
+  }
+}
+
+/**
+ * Initialize on startup - refresh models cache in background
+ */
+async function initializeModelsCache() {
+  try {
+    logInfo('Refreshing models cache from Puter...');
+    const models = await listModels();
+    saveModelsCache(models);
+    logInfo(`Models cache updated with ${models.length} models`);
+  } catch (error) {
+    logInfo('Failed to refresh models cache - will use cached data if available');
   }
 }
 
@@ -195,6 +545,10 @@ function startServer() {
     logInfo(`Health check: http://localhost:${port}/health`);
     logInfo(`Backend model: ${config.puterModel}`);
     logInfo(`Spoofed model: ${config.spoofedOpenAIModelId}`);
+    logInfo(`Emulator active: ${isEmulatorActive()}`);
+
+    // Initialize models cache in background
+    initializeModelsCache();
   });
 
   // Register shutdown handlers

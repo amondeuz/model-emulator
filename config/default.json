@@ -1,9 +1,11 @@
 {
   "port": 11434,
   "backend": "puter",
-  "puterModel": "gpt-5-nano",
+  "puterModel": "gpt-4o",
   "spoofedOpenAIModelId": "gpt-4o-mini",
   "enabled": true,
+  "emulatorActive": false,
+  "lastConfig": null,
   "logging": {
     "enabled": true,
     "logRequests": true,

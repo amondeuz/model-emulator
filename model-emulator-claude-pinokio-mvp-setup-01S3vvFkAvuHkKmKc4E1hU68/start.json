@@ -1,0 +1,40 @@
+{
+  "daemon": true,
+  "run": [
+    {
+      "method": "log",
+      "params": {
+        "raw": "Checking port availability..."
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "{{platform === 'win32' ? 'netstat -ano | findstr :11434' : 'lsof -ti :11434'}}",
+        "on": {
+          "error": "{{local.portAvailable = true}}"
+        }
+      }
+    },
+    {
+      "when": "{{!local.portAvailable}}",
+      "method": "log",
+      "params": {
+        "raw": "⚠️  WARNING: Port 11434 may already be in use. Server may fail to start."
+      }
+    },
+    {
+      "method": "log",
+      "params": {
+        "raw": "Starting Puter Local Model Emulator..."
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "node server/index.js",
+        "venv": false
+      }
+    }
+  ]
+}

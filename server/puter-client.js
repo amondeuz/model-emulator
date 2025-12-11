@@ -2,20 +2,19 @@
  * Puter.js integration client
  * Handles communication with Puter AI backend
  *
- * IMPORTANT: Based on Puter.js docs, Node.js usage requires:
- * - Import from "@heyputer/puter.js/src/init.cjs"
- * - Initialize with auth token via init(process.env.puterAuthToken)
- * - Use puter.ai.chat(prompt, options) for chat completions
+ * Based on Puter.js docs:
+ * - puter.ai.chat(prompt, options) or puter.ai.chat(messages, options)
+ * - puter.ai.listModels() returns array of model objects
  */
 
 const { init } = require("@heyputer/puter.js/src/init.cjs");
-const { logError } = require('./logger');
+const { logError, logInfo } = require('./logger');
 
 let puterInstance = null;
+let puterOnline = false;
 
 /**
  * Initialize Puter client
- * Note: Authentication is handled via environment variable or Puter's built-in auth
  */
 function initPuter() {
   if (puterInstance) {
@@ -23,8 +22,6 @@ function initPuter() {
   }
 
   try {
-    // Initialize Puter with auth token from environment if available
-    // If not set, Puter.js will handle authentication through its own mechanisms
     const authToken = process.env.PUTER_AUTH_TOKEN || process.env.puterAuthToken;
     puterInstance = init(authToken);
     return puterInstance;
@@ -35,8 +32,54 @@ function initPuter() {
 }
 
 /**
+ * Get current Puter connectivity status
+ */
+function isPuterOnline() {
+  return puterOnline;
+}
+
+/**
+ * Set Puter connectivity status
+ */
+function setPuterOnline(status) {
+  const changed = puterOnline !== status;
+  puterOnline = status;
+  return changed;
+}
+
+/**
+ * List available models from Puter
+ * Returns array of model objects with id, provider, name, etc.
+ */
+async function listModels() {
+  const puter = initPuter();
+
+  try {
+    const models = await puter.ai.listModels();
+    setPuterOnline(true);
+    return models;
+  } catch (error) {
+    setPuterOnline(false);
+    logError(error, { context: 'Puter listModels' });
+    throw error;
+  }
+}
+
+/**
+ * Check Puter connectivity by calling listModels
+ */
+async function checkConnectivity() {
+  try {
+    await listModels();
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
  * Convert OpenAI-style messages array to a simple prompt string
- * Puter.ai.chat expects a single prompt string, not a messages array
+ * Used only as fallback when Puter doesn't support messages array
  *
  * @param {Array} messages - OpenAI format messages [{role, content}, ...]
  * @returns {string} - Formatted prompt string
@@ -46,14 +89,11 @@ function messagesToPrompt(messages) {
     return '';
   }
 
-  // Simple conversion: join messages with role labels
-  // For more sophisticated conversion, could use different strategies
   return messages
     .map(msg => {
       const role = msg.role || 'user';
       const content = msg.content || '';
 
-      // Format based on role
       if (role === 'system') {
         return `System: ${content}`;
       } else if (role === 'assistant') {
@@ -68,57 +108,84 @@ function messagesToPrompt(messages) {
 /**
  * Call Puter AI chat completion
  *
- * @param {Array} messages - OpenAI format messages
+ * @param {Array|string} messagesOrPrompt - Messages array or prompt string
  * @param {Object} options - Chat options (model, temperature, etc.)
- * @returns {Promise<string>} - Chat completion response
+ * @returns {Promise<Object>} - Chat completion response with text and optional usage
  */
-async function chat(messages, options = {}) {
+async function chat(messagesOrPrompt, options = {}) {
   const puter = initPuter();
 
-  // Convert messages to prompt
-  const prompt = messagesToPrompt(messages);
+  // Build Puter chat options
+  const puterOptions = {};
 
-  if (!prompt) {
-    throw new Error('Empty prompt generated from messages');
+  if (options.model) {
+    puterOptions.model = options.model;
+  }
+
+  if (options.temperature !== undefined) {
+    puterOptions.temperature = options.temperature;
+  }
+
+  if (options.max_tokens !== undefined) {
+    puterOptions.max_tokens = options.max_tokens;
   }
 
   try {
-    // Build Puter chat options
-    const puterOptions = {};
+    let response;
 
-    // Model selection
-    if (options.model) {
-      puterOptions.model = options.model;
+    // Puter supports both messages array and prompt string
+    if (Array.isArray(messagesOrPrompt)) {
+      // Use messages array directly - Puter supports this
+      response = await puter.ai.chat(messagesOrPrompt, puterOptions);
+    } else if (typeof messagesOrPrompt === 'string') {
+      // Use prompt string directly
+      response = await puter.ai.chat(messagesOrPrompt, puterOptions);
+    } else {
+      throw new Error('Invalid input: expected messages array or prompt string');
     }
 
-    // Temperature (if supported)
-    if (options.temperature !== undefined) {
-      puterOptions.temperature = options.temperature;
+    setPuterOnline(true);
+
+    // Parse response - Puter may return:
+    // - A string directly
+    // - An object with message/content property
+    // - An object with usage information
+    let text = '';
+    let usage = null;
+
+    if (typeof response === 'string') {
+      text = response;
+    } else if (response && typeof response === 'object') {
+      // Try to extract text from various possible formats
+      if (response.message && typeof response.message === 'object') {
+        text = response.message.content || '';
+      } else if (response.message && typeof response.message === 'string') {
+        text = response.message;
+      } else if (response.content) {
+        text = response.content;
+      } else if (response.text) {
+        text = response.text;
+      }
+
+      // Extract usage if available
+      if (response.usage) {
+        usage = {
+          prompt_tokens: response.usage.prompt_tokens || response.usage.input_tokens || 0,
+          completion_tokens: response.usage.completion_tokens || response.usage.output_tokens || 0,
+          total_tokens: response.usage.total_tokens || 0
+        };
+        if (!usage.total_tokens && usage.prompt_tokens && usage.completion_tokens) {
+          usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
+        }
+      }
     }
 
-    // Top P (if supported)
-    if (options.top_p !== undefined) {
-      puterOptions.top_p = options.top_p;
-    }
-
-    // Max tokens (if supported)
-    // Note: Puter docs may use different parameter names
-    if (options.max_tokens !== undefined) {
-      puterOptions.max_tokens = options.max_tokens;
-    } else if (options.max_completion_tokens !== undefined) {
-      puterOptions.max_tokens = options.max_completion_tokens;
-    }
-
-    // Call Puter AI
-    const response = await puter.ai.chat(prompt, puterOptions);
-
-    // Puter.ai.chat returns the response text directly (based on examples)
-    return response;
+    return { text, usage };
   } catch (error) {
+    setPuterOnline(false);
     logError(error, {
       context: 'Puter AI chat call',
-      model: options.model,
-      promptLength: prompt.length
+      model: options.model
     });
     throw error;
   }
@@ -126,7 +193,7 @@ async function chat(messages, options = {}) {
 
 /**
  * Estimate token count for usage reporting
- * This is a rough approximation since Puter may not expose exact counts
+ * Used as fallback when Puter doesn't provide real counts
  *
  * Rule of thumb: ~4 characters per token for English text
  */
@@ -135,9 +202,43 @@ function estimateTokens(text) {
   return Math.ceil(text.length / 4);
 }
 
+/**
+ * Classify error type for proper HTTP response
+ */
+function classifyError(error) {
+  const message = error.message?.toLowerCase() || '';
+
+  if (message.includes('auth') || message.includes('token') || message.includes('unauthorized')) {
+    return { statusCode: 401, type: 'authentication_error' };
+  }
+
+  if (message.includes('permission') || message.includes('forbidden') || message.includes('access')) {
+    return { statusCode: 403, type: 'permission_error' };
+  }
+
+  if (message.includes('rate') || message.includes('limit') || message.includes('quota')) {
+    return { statusCode: 429, type: 'rate_limit_error' };
+  }
+
+  if (message.includes('invalid') || message.includes('bad request') || message.includes('missing')) {
+    return { statusCode: 400, type: 'invalid_request_error' };
+  }
+
+  if (message.includes('not found') || message.includes('model')) {
+    return { statusCode: 404, type: 'not_found_error' };
+  }
+
+  return { statusCode: 500, type: 'internal_server_error' };
+}
+
 module.exports = {
   initPuter,
   chat,
+  listModels,
+  checkConnectivity,
+  isPuterOnline,
+  setPuterOnline,
   messagesToPrompt,
-  estimateTokens
+  estimateTokens,
+  classifyError
 };

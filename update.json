@@ -1,0 +1,16 @@
+{
+  "run": [
+    {
+      "method": "log",
+      "params": {
+        "raw": "Checking for updates from GitHub..."
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "node update.js"
+      }
+    }
+  ]
+}

@@ -1,79 +1,41 @@
-const fs = require('fs');
-const path = require('path');
-const net = require('net');
+const title = 'Puter Local Model Emulator';
+const description = 'Local OpenAI-compatible endpoint backed by Puter AI.';
+const icon = 'icon.png';
 
-const installScript = require('./install.json');
-const startScript = require('./start.json');
-const stopScript = require('./stop.json');
-const updateScript = require('./update.json');
-const healthScript = require('./health.json');
+module.exports = {
+  version: '2.0',
+  title,
+  description,
+  icon,
+  scripts: {
+    install: require('./install.json'),
+    start: require('./start.json'),
+    stop: require('./stop.json'),
+    update: require('./update.json'),
+    health: require('./health.json'),
+    config: require('./config.json'),
+  },
+  menu: async (kernel, info) => {
+    const installed = await info.exists('node_modules');
+    const running = installed ? await info.running('start.json') : false;
 
-function getConfiguredPort() {
-  try {
-    const configPath = path.join(__dirname, 'config', 'default.json');
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      if (config.port) return config.port;
+    if (!installed) {
+      return [
+        { text: 'Install', icon: 'fa-solid fa-download', href: 'install.json', default: true },
+        { text: 'Update', icon: 'fa-solid fa-rotate', href: 'update.json' },
+      ];
     }
-  } catch (error) {
-    // ignore and fall back to default
-  }
 
-  return 11434;
-}
-
-function isInstalled() {
-  return fs.existsSync(path.join(__dirname, 'node_modules'));
-}
-
-function isServerRunning(port = getConfiguredPort()) {
-  return new Promise((resolve) => {
-    const socket = net.createConnection({ port, host: '127.0.0.1' }, () => {
-      socket.destroy();
-      resolve(true);
-    });
-    socket.on('error', () => resolve(false));
-  });
-}
-
-module.exports = async function pinokio({}) {
-  return {
-    title: 'Puter Local Model Emulator',
-    description: 'Local OpenAI-compatible endpoint backed by Puter AI.',
-    icon: 'icon.png',
-    entry: '/config.html',
-
-    menu: [
-      { html: "<i class='fa-solid fa-robot'></i> Emulator", route: '/config.html' },
-      { html: "<i class='fa-solid fa-rotate'></i> Update", script: 'update' }
-    ],
-
-    scripts: {
-      install: installScript,
-      start: startScript,
-      stop: stopScript,
-      update: updateScript,
-      health: healthScript
-    },
-
-    async installed() {
-      return isInstalled();
-    },
-
-    async running() {
-      return isServerRunning();
-    },
-
-    async launch({ run, route }) {
-      if (!(await isInstalled())) {
-        await run('install');
-      }
-
-      if (!(await isServerRunning())) {
-        await run('start');
-      }
-
-      return route('/config.html');
+    if (!running) {
+      return [
+        { text: 'Start', icon: 'fa-solid fa-play', href: 'start.json', default: true },
+        { text: 'Update', icon: 'fa-solid fa-rotate', href: 'update.json' },
+      ];
     }
-  };
+
+    return [
+      { text: 'Emulator', icon: 'fa-solid fa-robot', href: 'config.json', default: true },
+      { text: 'Update', icon: 'fa-solid fa-rotate', href: 'update.json' },
+    ];
+  },
 };

@@ -3,956 +3,329 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Puter Model Emulator - Configuration</title>
+  <title>Puter Model Emulator</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-      background: #f5f5f5;
-      padding: 20px;
-      line-height: 1.6;
-    }
-
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: white;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 20px;
-    }
-
-    .header-left h1 {
-      color: #333;
-      font-size: 24px;
-      margin-bottom: 5px;
-    }
-
-    .subtitle {
-      color: #666;
-      font-size: 14px;
-    }
-
-    /* Puter Status Indicator */
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .status-indicator.online {
-      background: #d4edda;
-      color: #155724;
-    }
-
-    .status-indicator.offline {
-      background: #f8d7da;
-      color: #721c24;
-    }
-
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-    }
-
-    .status-dot.online {
-      background: #28a745;
-    }
-
-    .status-dot.offline {
-      background: #dc3545;
-    }
-
-    /* Endpoint Info */
-    .endpoint-info {
-      background: #fff3cd;
-      border: 1px solid #ffc107;
-      padding: 15px;
-      border-radius: 4px;
-      margin-bottom: 25px;
-    }
-
-    .endpoint-info h3 {
-      font-size: 14px;
-      margin-bottom: 8px;
-      color: #856404;
-    }
-
-    .endpoint-url {
-      font-family: monospace;
-      font-size: 13px;
-      color: #333;
-      background: white;
-      padding: 8px;
-      border-radius: 3px;
-    }
-
-    /* Form Sections */
-    .section {
-      margin-bottom: 25px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: #333;
-      font-size: 14px;
-    }
-
-    .help-text {
-      font-size: 12px;
-      color: #666;
-      margin-top: 4px;
-      font-weight: normal;
-    }
-
-    select, input[type="text"] {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-      font-family: inherit;
-    }
-
-    select:focus, input:focus {
-      outline: none;
-      border-color: #4a9eff;
-    }
-
-    /* Model Info Box */
-    .model-info {
-      background: #f8f9fa;
-      padding: 12px;
-      border-radius: 4px;
-      margin-top: 8px;
-      font-size: 13px;
-      color: #555;
-    }
-
-    .model-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 6px;
-      font-size: 12px;
-    }
-
-    .model-meta-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .model-meta-label {
-      color: #888;
-    }
-
-    /* Button Groups */
-    .button-group {
-      display: flex;
-      gap: 10px;
-      margin-top: 30px;
-    }
-
-    button {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s, opacity 0.2s;
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .btn-primary {
-      background: #4a9eff;
-      color: white;
-      flex: 1;
-    }
-
-    .btn-primary:hover:not(:disabled) {
-      background: #3a8eef;
-    }
-
-    .btn-primary.active {
-      background: #dc3545;
-    }
-
-    .btn-primary.active:hover:not(:disabled) {
-      background: #c82333;
-    }
-
-    .btn-secondary {
-      background: #f0f0f0;
-      color: #333;
-    }
-
-    .btn-secondary:hover:not(:disabled) {
-      background: #e0e0e0;
-    }
-
-    /* Message Area */
-    .message-area {
-      padding: 15px;
-      border-radius: 4px;
-      margin-top: 20px;
-      font-size: 14px;
-      display: none;
-    }
-
-    .message-area.success {
-      background: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
-      display: block;
-    }
-
-    .message-area.error {
-      background: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
-      display: block;
-    }
-
-    .message-area.info {
-      background: #d1ecf1;
-      color: #0c5460;
-      border: 1px solid #bee5eb;
-      display: block;
-    }
-
-    /* Modal */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .modal-overlay.visible {
-      display: flex;
-    }
-
-    .modal {
-      background: white;
-      padding: 25px;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 400px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    }
-
-    .modal h3 {
-      margin-bottom: 15px;
-      color: #333;
-    }
-
-    .modal input {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-      margin-bottom: 15px;
-    }
-
-    .modal-buttons {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-    }
-
-    .modal-buttons button {
-      padding: 8px 20px;
-    }
-
-    /* Saved Configs Section */
-    .saved-config-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-    }
-
-    .saved-config-row .section {
-      flex: 1;
-      margin-bottom: 0;
-    }
-
-    .saved-config-row button {
-      margin-bottom: 0;
-      white-space: nowrap;
-    }
-
-    /* Divider */
-    .divider {
-      border: none;
-      border-top: 1px solid #eee;
-      margin: 25px 0;
-    }
-
-    /* Emulator status badge */
-    .emulator-status {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-left: 10px;
-    }
-
-    .emulator-status.active {
-      background: #28a745;
-      color: white;
-    }
-
-    .emulator-status.inactive {
-      background: #6c757d;
-      color: white;
-    }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color: #1f2933; }
+    .container { max-width: 840px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .muted { color: #627384; font-size: 14px; margin: 0; }
+    .section { margin-top: 18px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    input[type="text"], select { width: 100%; padding: 11px 12px; border: 1px solid #d9e1ec; border-radius: 10px; font-size: 14px; }
+    input:focus, select:focus { outline: none; border-color: #4a9eff; box-shadow: 0 0 0 3px rgba(74,158,255,0.15); }
+    .row { display: flex; gap: 10px; align-items: center; }
+    .row > *:first-child { flex: 1; }
+    button { border: none; border-radius: 10px; padding: 11px 16px; font-weight: 600; cursor: pointer; font-size: 14px; }
+    .primary { background: #4a9eff; color: white; }
+    .secondary { background: #eef2f7; color: #1f2933; }
+    .danger { background: #e35d6a; color: white; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .endpoint { background: #f3f7ff; border: 1px solid #d9e7ff; padding: 12px 14px; border-radius: 10px; font-family: monospace; font-size: 13px; word-break: break-all; }
+    .status-bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #f8fafc; border: 1px solid #e5ecf3; border-radius: 10px; margin-top: 22px; }
+    .indicator { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; font-weight: 600; }
+    .indicator .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .online { background: #e8f7ef; color: #1b6e34; }
+    .online .dot { background: #22c55e; }
+    .offline { background: #fdf2f2; color: #b42318; }
+    .offline .dot { background: #f75555; }
+    .icon-button { background: #eef2f7; color: #1f2933; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; }
+    .message { flex: 1; color: #1f2933; font-size: 13px; min-height: 18px; }
+    .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #eef2f7; font-size: 12px; margin-left: 6px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <div class="header-left">
-        <h1>
-          Puter Local Model Emulator
-          <span id="emulator-badge" class="emulator-status inactive">Inactive</span>
-        </h1>
-        <p class="subtitle">Configure your local OpenAI-compatible endpoint backed by Puter AI</p>
-      </div>
-      <div id="puter-status" class="status-indicator offline">
-        <span class="status-dot offline"></span>
-        <span>Puter Offline</span>
-      </div>
-    </div>
+    <header>
+      <h1>Puter Local Model Emulator</h1>
+      <p class="muted">Configure the OpenAI-compatible endpoint backed by Puter AI.</p>
+    </header>
 
-    <div class="endpoint-info">
-      <h3>OpenAI Endpoint URL:</h3>
-      <div class="endpoint-url" id="endpoint-url">Loading...</div>
-    </div>
-
-    <!-- Saved Configurations -->
     <div class="section">
-      <label>
-        Saved Configuration
-        <span class="help-text">Load a previously saved configuration</span>
-      </label>
-      <div class="saved-config-row">
-        <div class="section">
-          <select id="saved-config-select">
-            <option value="">-- Select saved configuration --</option>
-          </select>
-        </div>
-        <button type="button" id="save-edit-btn" class="btn-secondary">Save</button>
-      </div>
+      <label>OpenAI Endpoint URL</label>
+      <div id="endpoint" class="endpoint">Loading…</div>
     </div>
 
-    <hr class="divider">
-
-    <!-- Puter Model Selection -->
     <div class="section">
-      <label>
-        Puter Model
-        <span class="help-text">Select the Puter AI model to use for completions (required)</span>
-      </label>
-      <select id="puter-model" required>
-        <option value="">Loading models...</option>
-      </select>
-      <div id="model-info" class="model-info" style="display: none;">
-        <div id="model-name"></div>
-        <div class="model-meta" id="model-meta"></div>
+      <label>Saved Configuration <span class="muted" style="font-weight:400">Load or save presets</span></label>
+      <div class="row">
+        <select id="preset-select">
+          <option value="">-- No preset selected --</option>
+        </select>
+        <button id="preset-action" class="secondary">Save</button>
       </div>
     </div>
 
-    <!-- Spoofed OpenAI Model ID -->
     <div class="section">
-      <label>
-        Spoofed OpenAI Model ID
-        <span class="help-text">Model name to report to clients in responses (optional)</span>
-      </label>
-      <input
-        type="text"
-        id="spoofed-model"
-        placeholder="e.g., gpt-4o, gpt-4o-mini, claude-3-5-sonnet"
-        list="common-models"
-      >
-      <datalist id="common-models">
-        <option value="gpt-4o">
-        <option value="gpt-4o-mini">
-        <option value="gpt-4-turbo">
-        <option value="gpt-3.5-turbo">
-        <option value="claude-3-5-sonnet-20241022">
-        <option value="claude-3-opus-20240229">
-      </datalist>
-    </div>
-
-    <!-- Control Buttons -->
-    <div class="button-group">
-      <button type="button" id="start-stop-btn" class="btn-primary">Start</button>
-      <button type="button" id="refresh-models-btn" class="btn-secondary">Refresh Models</button>
-    </div>
-
-    <!-- Message Area -->
-    <div id="message-area" class="message-area"></div>
-  </div>
-
-  <!-- Edit Name Modal -->
-  <div id="edit-modal" class="modal-overlay">
-    <div class="modal">
-      <h3>Rename Configuration</h3>
-      <input type="text" id="edit-name-input" placeholder="Configuration name">
-      <div class="modal-buttons">
-        <button type="button" id="modal-cancel-btn" class="btn-secondary">Cancel</button>
-        <button type="button" id="modal-ok-btn" class="btn-primary">OK</button>
+      <label>Puter Model</label>
+      <div class="row">
+        <select id="model-select"></select>
+        <button id="refresh-models" class="secondary">Refresh Models</button>
       </div>
     </div>
-  </div>
 
-  <!-- Save Config Modal -->
-  <div id="save-modal" class="modal-overlay">
-    <div class="modal">
-      <h3>Save Configuration</h3>
-      <input type="text" id="save-name-input" placeholder="Enter a name for this configuration">
-      <div class="modal-buttons">
-        <button type="button" id="save-modal-cancel-btn" class="btn-secondary">Cancel</button>
-        <button type="button" id="save-modal-ok-btn" class="btn-primary">Save</button>
+    <div class="section">
+      <label>Spoofed OpenAI Model ID</label>
+      <div class="row">
+        <input type="text" id="spoofed-model" placeholder="e.g. gpt-4o-mini">
+        <button id="start-stop" class="primary">Start</button>
       </div>
+    </div>
+
+    <div class="status-bar">
+      <div id="puter-indicator" class="indicator offline">
+        <span class="dot"></span>
+        <span class="indicator-text">Puter Offline</span>
+      </div>
+      <div id="emulator-pill" class="pill">Emulator stopped</div>
+      <button id="refresh-health" class="icon-button" title="Refresh status">⟳</button>
+      <div id="status-message" class="message"></div>
     </div>
   </div>
 
   <script>
-    // State
+    const endpointEl = document.getElementById('endpoint');
+    const presetSelect = document.getElementById('preset-select');
+    const presetActionBtn = document.getElementById('preset-action');
+    const modelSelect = document.getElementById('model-select');
+    const refreshModelsBtn = document.getElementById('refresh-models');
+    const spoofedInput = document.getElementById('spoofed-model');
+    const startStopBtn = document.getElementById('start-stop');
+    const indicatorEl = document.getElementById('puter-indicator');
+    const indicatorText = indicatorEl.querySelector('.indicator-text');
+    const emulatorPill = document.getElementById('emulator-pill');
+    const refreshHealthBtn = document.getElementById('refresh-health');
+    const statusMessage = document.getElementById('status-message');
+
+    let presets = [];
     let models = [];
-    let savedConfigs = [];
-    let selectedSavedConfigId = null;
     let emulatorActive = false;
     let puterOnline = false;
-    let lastStatusMessage = null;
 
-    // DOM Elements
-    const puterStatusEl = document.getElementById('puter-status');
-    const emulatorBadgeEl = document.getElementById('emulator-badge');
-    const endpointUrlEl = document.getElementById('endpoint-url');
-    const savedConfigSelect = document.getElementById('saved-config-select');
-    const puterModelSelect = document.getElementById('puter-model');
-    const spoofedModelInput = document.getElementById('spoofed-model');
-    const modelInfoEl = document.getElementById('model-info');
-    const modelNameEl = document.getElementById('model-name');
-    const modelMetaEl = document.getElementById('model-meta');
-    const saveEditBtn = document.getElementById('save-edit-btn');
-    const startStopBtn = document.getElementById('start-stop-btn');
-    const refreshModelsBtn = document.getElementById('refresh-models-btn');
-    const messageAreaEl = document.getElementById('message-area');
+    function setMessage(text) {
+      statusMessage.textContent = text || '';
+    }
 
-    // Modal Elements
-    const editModal = document.getElementById('edit-modal');
-    const editNameInput = document.getElementById('edit-name-input');
-    const modalCancelBtn = document.getElementById('modal-cancel-btn');
-    const modalOkBtn = document.getElementById('modal-ok-btn');
-
-    const saveModal = document.getElementById('save-modal');
-    const saveNameInput = document.getElementById('save-name-input');
-    const saveModalCancelBtn = document.getElementById('save-modal-cancel-btn');
-    const saveModalOkBtn = document.getElementById('save-modal-ok-btn');
-
-    // ========================================================================
-    // STATUS UPDATES
-    // ========================================================================
-
-    function updatePuterStatus(online) {
-      const changed = puterOnline !== online;
+    function setIndicator(online) {
       puterOnline = online;
-
-      const statusDot = puterStatusEl.querySelector('.status-dot');
-      const statusText = puterStatusEl.querySelector('span:last-child');
-
-      if (online) {
-        puterStatusEl.classList.remove('offline');
-        puterStatusEl.classList.add('online');
-        statusDot.classList.remove('offline');
-        statusDot.classList.add('online');
-        statusText.textContent = 'Puter Online';
-        if (changed) {
-          showMessage('Puter is online', 'success');
-        }
-      } else {
-        puterStatusEl.classList.remove('online');
-        puterStatusEl.classList.add('offline');
-        statusDot.classList.remove('online');
-        statusDot.classList.add('offline');
-        statusText.textContent = 'Puter Offline';
-        if (changed) {
-          showMessage('Puter is offline', 'error');
-        }
-      }
+      indicatorEl.classList.toggle('online', online);
+      indicatorEl.classList.toggle('offline', !online);
+      indicatorText.textContent = online ? 'Puter Online' : 'Puter Offline';
     }
 
-    function updateEmulatorStatus(active) {
+    function setEmulatorState(active) {
       emulatorActive = active;
-
-      if (active) {
-        emulatorBadgeEl.classList.remove('inactive');
-        emulatorBadgeEl.classList.add('active');
-        emulatorBadgeEl.textContent = 'Active';
-        startStopBtn.textContent = 'Stop';
-        startStopBtn.classList.add('active');
-      } else {
-        emulatorBadgeEl.classList.remove('active');
-        emulatorBadgeEl.classList.add('inactive');
-        emulatorBadgeEl.textContent = 'Inactive';
-        startStopBtn.textContent = 'Start';
-        startStopBtn.classList.remove('active');
-      }
+      emulatorPill.textContent = active ? 'Emulator running' : 'Emulator stopped';
+      startStopBtn.textContent = active ? 'Stop' : 'Start';
+      startStopBtn.classList.toggle('danger', active);
+      startStopBtn.classList.toggle('primary', !active);
     }
 
-    function showMessage(message, type) {
-      // Don't show duplicate messages
-      if (lastStatusMessage === `${type}:${message}`) {
+    function populateModels(selectedId) {
+      modelSelect.innerHTML = '';
+      if (!models.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No models available';
+        modelSelect.appendChild(opt);
         return;
       }
-      lastStatusMessage = `${type}:${message}`;
-
-      messageAreaEl.textContent = message;
-      messageAreaEl.className = `message-area ${type}`;
-
-      if (type === 'success') {
-        setTimeout(() => {
-          if (messageAreaEl.textContent === message) {
-            messageAreaEl.className = 'message-area';
-            lastStatusMessage = null;
-          }
-        }, 5000);
-      }
-    }
-
-    // ========================================================================
-    // MODEL LIST
-    // ========================================================================
-
-    function populateModels() {
-      puterModelSelect.innerHTML = '<option value="">-- Select a model --</option>';
 
       models.forEach(model => {
-        const option = document.createElement('option');
-        option.value = model.id;
-        const displayName = model.name || model.id;
-        const provider = model.provider || '';
-        option.textContent = provider ? `${displayName} (${provider})` : displayName;
-        puterModelSelect.appendChild(option);
+        const opt = document.createElement('option');
+        opt.value = model.id;
+        opt.textContent = model.label || model.id;
+        modelSelect.appendChild(opt);
       });
-    }
-
-    function updateModelInfo() {
-      const selectedId = puterModelSelect.value;
-
-      if (!selectedId) {
-        modelInfoEl.style.display = 'none';
-        return;
-      }
-
-      const model = models.find(m => m.id === selectedId);
-      if (!model) {
-        modelInfoEl.style.display = 'none';
-        return;
-      }
-
-      modelNameEl.textContent = model.name || model.id;
-
-      // Build meta info
-      const metaItems = [];
-      if (model.provider) {
-        metaItems.push(`<span class="model-meta-item"><span class="model-meta-label">Provider:</span> ${model.provider}</span>`);
-      }
-      if (model.context) {
-        metaItems.push(`<span class="model-meta-item"><span class="model-meta-label">Context:</span> ${model.context.toLocaleString()}</span>`);
-      }
-      if (model.max_tokens) {
-        metaItems.push(`<span class="model-meta-item"><span class="model-meta-label">Max Tokens:</span> ${model.max_tokens.toLocaleString()}</span>`);
-      }
-      if (model.cost) {
-        metaItems.push(`<span class="model-meta-item"><span class="model-meta-label">Cost:</span> ${model.cost}</span>`);
-      }
-
-      modelMetaEl.innerHTML = metaItems.join('');
-      modelInfoEl.style.display = 'block';
-    }
-
-    async function refreshModels() {
-      try {
-        refreshModelsBtn.disabled = true;
-        refreshModelsBtn.textContent = 'Refreshing...';
-
-        const response = await fetch('/api/models/refresh', { method: 'POST' });
-        const data = await response.json();
-
-        if (data.success) {
-          models = data.models || [];
-          populateModels();
-          updatePuterStatus(true);
-          showMessage(`Models refreshed: ${models.length} models available`, 'success');
-        } else {
-          updatePuterStatus(false);
-          showMessage(data.error || 'Failed to refresh models', 'error');
-        }
-      } catch (error) {
-        updatePuterStatus(false);
-        showMessage('Failed to refresh models: ' + error.message, 'error');
-      } finally {
-        refreshModelsBtn.disabled = false;
-        refreshModelsBtn.textContent = 'Refresh Models';
-      }
-    }
-
-    // ========================================================================
-    // SAVED CONFIGURATIONS
-    // ========================================================================
-
-    function populateSavedConfigs() {
-      savedConfigSelect.innerHTML = '<option value="">-- Select saved configuration --</option>';
-
-      savedConfigs.forEach(config => {
-        const option = document.createElement('option');
-        option.value = config.id;
-        option.textContent = config.name;
-        savedConfigSelect.appendChild(option);
-      });
-    }
-
-    function onSavedConfigChange() {
-      const selectedId = savedConfigSelect.value;
-      selectedSavedConfigId = selectedId || null;
 
       if (selectedId) {
-        const config = savedConfigs.find(c => c.id === selectedId);
-        if (config) {
-          puterModelSelect.value = config.puterModelId || '';
-          spoofedModelInput.value = config.spoofedOpenAIModelId || '';
-          updateModelInfo();
-        }
-        saveEditBtn.textContent = 'Edit';
-      } else {
-        saveEditBtn.textContent = 'Save';
+        modelSelect.value = selectedId;
       }
     }
 
-    function onSaveEditClick() {
-      if (selectedSavedConfigId) {
-        // Edit mode - show rename modal
-        const config = savedConfigs.find(c => c.id === selectedSavedConfigId);
-        if (config) {
-          editNameInput.value = config.name;
-          editModal.classList.add('visible');
-          editNameInput.focus();
-        }
-      } else {
-        // Save mode - show save modal
-        saveNameInput.value = '';
-        saveModal.classList.add('visible');
-        saveNameInput.focus();
+    function populatePresets(selectedId) {
+      presetSelect.innerHTML = '<option value="">-- No preset selected --</option>';
+      presets.forEach(preset => {
+        const opt = document.createElement('option');
+        opt.value = preset.id;
+        opt.textContent = preset.name;
+        presetSelect.appendChild(opt);
+      });
+
+      if (selectedId) {
+        presetSelect.value = selectedId;
       }
+
+      presetActionBtn.textContent = presetSelect.value ? 'Edit' : 'Save';
     }
 
-    async function saveNewConfig(name) {
-      const puterModelId = puterModelSelect.value;
-      const spoofedOpenAIModelId = spoofedModelInput.value;
+    function applyPreset(presetId) {
+      const preset = presets.find(p => p.id === presetId);
+      if (!preset) return;
+      modelSelect.value = preset.puterModelId;
+      spoofedInput.value = preset.spoofedOpenAIModelId || '';
+      presetActionBtn.textContent = 'Edit';
+      setMessage(`Loaded preset "${preset.name}"`);
+    }
 
+    async function fetchState(force = false) {
+      const res = await fetch(`/config/state${force ? '?force=true' : ''}`);
+      if (!res.ok) throw new Error('Failed to load state');
+      return res.json();
+    }
+
+    async function saveConfig() {
+      const body = {
+        puterModelId: modelSelect.value,
+        spoofedOpenAIModelId: spoofedInput.value
+      };
+      await fetch('/config/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    }
+
+    async function handleStartStop() {
+      const puterModelId = modelSelect.value;
       if (!puterModelId) {
-        showMessage('Please select a Puter model first', 'error');
+        setMessage('Select a Puter model first.');
         return;
       }
 
+      startStopBtn.disabled = true;
       try {
-        const response = await fetch('/api/saved-configs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, puterModelId, spoofedOpenAIModelId })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          savedConfigs.push(data.config);
-          populateSavedConfigs();
-          savedConfigSelect.value = data.config.id;
-          onSavedConfigChange();
-          showMessage('Configuration saved successfully', 'success');
-        } else {
-          showMessage(data.error || 'Failed to save configuration', 'error');
-        }
-      } catch (error) {
-        showMessage('Failed to save configuration: ' + error.message, 'error');
-      }
-    }
-
-    async function renameConfig(newName) {
-      if (!selectedSavedConfigId) return;
-
-      try {
-        const response = await fetch(`/api/saved-configs/${selectedSavedConfigId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: newName })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          const config = savedConfigs.find(c => c.id === selectedSavedConfigId);
-          if (config) {
-            config.name = newName;
-          }
-          populateSavedConfigs();
-          savedConfigSelect.value = selectedSavedConfigId;
-          showMessage('Configuration renamed successfully', 'success');
-        } else {
-          showMessage(data.error || 'Failed to rename configuration', 'error');
-        }
-      } catch (error) {
-        showMessage('Failed to rename configuration: ' + error.message, 'error');
-      }
-    }
-
-    // ========================================================================
-    // EMULATOR CONTROL
-    // ========================================================================
-
-    async function startEmulator() {
-      const puterModelId = puterModelSelect.value;
-      const spoofedOpenAIModelId = spoofedModelInput.value;
-
-      if (!puterModelId) {
-        showMessage('Please select a Puter model', 'error');
-        return;
-      }
-
-      try {
-        startStopBtn.disabled = true;
-        startStopBtn.textContent = 'Starting...';
-
-        const response = await fetch('/api/emulator/start', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ puterModelId, spoofedOpenAIModelId })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          updateEmulatorStatus(true);
-          updatePuterStatus(true);
-          showMessage('Emulator started successfully', 'success');
-        } else {
-          showMessage(data.error || 'Failed to start emulator', 'error');
-          if (data.error && data.error.includes('offline')) {
-            updatePuterStatus(false);
-          }
-        }
-      } catch (error) {
-        showMessage('Failed to start emulator: ' + error.message, 'error');
-      } finally {
-        startStopBtn.disabled = false;
-        if (!emulatorActive) {
-          startStopBtn.textContent = 'Start';
-        }
-      }
-    }
-
-    async function stopEmulator() {
-      try {
-        startStopBtn.disabled = true;
-        startStopBtn.textContent = 'Stopping...';
-
-        const response = await fetch('/api/emulator/stop', { method: 'POST' });
-        const data = await response.json();
-
-        if (data.success) {
-          updateEmulatorStatus(false);
-          showMessage('Emulator stopped', 'info');
-        } else {
-          showMessage(data.error || 'Failed to stop emulator', 'error');
-        }
-      } catch (error) {
-        showMessage('Failed to stop emulator: ' + error.message, 'error');
-      } finally {
-        startStopBtn.disabled = false;
         if (emulatorActive) {
-          startStopBtn.textContent = 'Stop';
-          startStopBtn.classList.add('active');
+          const res = await fetch('/emulator/stop', { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            setEmulatorState(false);
+            setMessage('Emulator stopped.');
+          } else {
+            setMessage(data.error || 'Failed to stop emulator.');
+          }
+        } else {
+          await saveConfig();
+          const res = await fetch('/emulator/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ puterModelId, spoofedOpenAIModelId: spoofedInput.value })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setEmulatorState(true);
+            setIndicator(true);
+            setMessage('Emulator started.');
+          } else {
+            setMessage(data.error || 'Failed to start emulator.');
+          }
         }
+      } catch (err) {
+        setMessage(err.message);
+      } finally {
+        startStopBtn.disabled = false;
       }
     }
 
-    function onStartStopClick() {
-      if (emulatorActive) {
-        stopEmulator();
-      } else {
-        startEmulator();
-      }
-    }
-
-    // ========================================================================
-    // INITIALIZATION
-    // ========================================================================
-
-    async function loadInitialData() {
+    async function refreshModels(force = false) {
+      refreshModelsBtn.disabled = true;
       try {
-        const response = await fetch('/config/current');
-        const data = await response.json();
-
-        // Update state
+        const res = await fetch(`/models${force ? '?force=true' : ''}`);
+        const data = await res.json();
         models = data.models || [];
-        savedConfigs = data.savedConfigs || [];
-        emulatorActive = data.emulatorActive || false;
-        puterOnline = data.puterOnline || false;
-
-        // Update endpoint URL
-        const port = data.config?.port || 11434;
-        endpointUrlEl.textContent = `http://localhost:${port}/v1/chat/completions`;
-
-        // Populate dropdowns
-        populateModels();
-        populateSavedConfigs();
-
-        // Load last config or current config
-        const lastConfig = data.lastConfig || {};
-        if (lastConfig.puterModelId) {
-          puterModelSelect.value = lastConfig.puterModelId;
-        } else if (data.config?.puterModel) {
-          puterModelSelect.value = data.config.puterModel;
-        }
-
-        if (lastConfig.spoofedOpenAIModelId !== undefined) {
-          spoofedModelInput.value = lastConfig.spoofedOpenAIModelId;
-        } else if (data.config?.spoofedOpenAIModelId) {
-          spoofedModelInput.value = data.config.spoofedOpenAIModelId;
-        }
-
-        // Update UI
-        updateModelInfo();
-        updateEmulatorStatus(emulatorActive);
-        updatePuterStatus(puterOnline);
-
-        // Check Puter connectivity in background
-        checkPuterStatus();
-      } catch (error) {
-        showMessage('Failed to load configuration: ' + error.message, 'error');
+        populateModels(modelSelect.value || (models[0] && models[0].id));
+        setIndicator(data.puterOnline !== false);
+        setMessage(force ? 'Models refreshed from Puter.' : 'Models loaded.');
+      } catch (err) {
+        setMessage('Failed to load models: ' + err.message);
+      } finally {
+        refreshModelsBtn.disabled = false;
       }
     }
 
-    async function checkPuterStatus() {
+    async function refreshHealth() {
       try {
-        const response = await fetch('/api/emulator/status');
-        const data = await response.json();
-        updatePuterStatus(data.puterOnline);
-        updateEmulatorStatus(data.emulatorActive);
-      } catch (error) {
-        // Silently fail
+        const res = await fetch('/health');
+        const data = await res.json();
+        setIndicator(data.online === true);
+        setMessage(data.message || 'Health checked.');
+      } catch (err) {
+        setIndicator(false);
+        setMessage('Unable to reach Puter: ' + err.message);
       }
     }
 
-    // ========================================================================
-    // EVENT LISTENERS
-    // ========================================================================
+    async function savePreset(existingId) {
+      const name = prompt(existingId ? 'Rename preset' : 'Preset name');
+      if (!name) return;
+      const body = {
+        id: existingId || undefined,
+        name: name.trim(),
+        puterModelId: modelSelect.value,
+        spoofedOpenAIModelId: spoofedInput.value
+      };
+      const res = await fetch('/config/savePreset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (existingId) {
+          presets = presets.map(p => p.id === existingId ? data.preset : p);
+          populatePresets(existingId);
+          setMessage('Preset updated.');
+        } else {
+          presets.push(data.preset);
+          populatePresets(data.preset.id);
+          setMessage('Preset saved.');
+        }
+      } else {
+        setMessage(data.error || 'Failed to save preset.');
+      }
+    }
 
-    // Model selection change
-    puterModelSelect.addEventListener('change', updateModelInfo);
+    async function init() {
+      try {
+        const state = await fetchState();
+        endpointEl.textContent = state.endpoint;
+        presets = state.presets || [];
+        models = state.models || [];
+        populatePresets();
+        populateModels(state.lastConfig?.puterModelId || state.config?.puterModel);
+        if (state.lastConfig?.spoofedOpenAIModelId) {
+          spoofedInput.value = state.lastConfig.spoofedOpenAIModelId;
+        } else if (state.config?.spoofedOpenAIModelId) {
+          spoofedInput.value = state.config.spoofedOpenAIModelId;
+        }
+        setEmulatorState(state.emulatorActive);
+        setIndicator(state.puterOnline !== false);
+        setMessage('Ready.');
+      } catch (err) {
+        setMessage('Failed to load state: ' + err.message);
+      }
+    }
 
-    // Saved config selection change
-    savedConfigSelect.addEventListener('change', onSavedConfigChange);
-
-    // Save/Edit button
-    saveEditBtn.addEventListener('click', onSaveEditClick);
-
-    // Start/Stop button
-    startStopBtn.addEventListener('click', onStartStopClick);
-
-    // Refresh models button
-    refreshModelsBtn.addEventListener('click', refreshModels);
-
-    // Edit modal
-    modalCancelBtn.addEventListener('click', () => {
-      editModal.classList.remove('visible');
+    presetSelect.addEventListener('change', () => {
+      if (presetSelect.value) {
+        applyPreset(presetSelect.value);
+      }
+      presetActionBtn.textContent = presetSelect.value ? 'Edit' : 'Save';
     });
 
-    modalOkBtn.addEventListener('click', () => {
-      const newName = editNameInput.value.trim();
-      if (newName) {
-        renameConfig(newName);
-        editModal.classList.remove('visible');
+    presetActionBtn.addEventListener('click', () => {
+      if (presetSelect.value) {
+        savePreset(presetSelect.value);
+      } else {
+        savePreset();
       }
     });
 
-    editNameInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        modalOkBtn.click();
-      }
-    });
+    refreshModelsBtn.addEventListener('click', () => refreshModels(true));
+    startStopBtn.addEventListener('click', handleStartStop);
+    refreshHealthBtn.addEventListener('click', refreshHealth);
 
-    // Save modal
-    saveModalCancelBtn.addEventListener('click', () => {
-      saveModal.classList.remove('visible');
-    });
-
-    saveModalOkBtn.addEventListener('click', () => {
-      const name = saveNameInput.value.trim();
-      if (name) {
-        saveNewConfig(name);
-        saveModal.classList.remove('visible');
-      }
-    });
-
-    saveNameInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        saveModalOkBtn.click();
-      }
-    });
-
-    // Close modals on overlay click
-    editModal.addEventListener('click', (e) => {
-      if (e.target === editModal) {
-        editModal.classList.remove('visible');
-      }
-    });
-
-    saveModal.addEventListener('click', (e) => {
-      if (e.target === saveModal) {
-        saveModal.classList.remove('visible');
-      }
-    });
-
-    // Initialize
-    loadInitialData();
+    init();
   </script>
 </body>
 </html>

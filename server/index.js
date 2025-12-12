@@ -9,17 +9,83 @@
 const express = require('express');
 const path = require('path');
 const {
-  getConfig, updateConfig, getModelsCache, saveModelsCache,
-  getSavedConfigs, addSavedConfig, updateSavedConfigName, deleteSavedConfig,
+  getConfig, updateConfig, getModelsCache, isModelsCacheStale, saveModelsCache,
+  getSavedConfigs, addSavedConfig, updateSavedConfig, deleteSavedConfig,
   getSavedConfigById, isEmulatorActive, startEmulator, stopEmulator, getLastConfig
 } = require('./config');
 const { handleChatCompletion } = require('./openai-adapter');
 const { logInfo, logError, getHealthInfo } = require('./logger');
 const { listModels, checkConnectivity, isPuterOnline } = require('./puter-client');
 
+const MODELS_TTL_MS = 1000 * 60 * 30; // 30 minutes
+
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Helpers
+function normalizeModel(model) {
+  if (!model) return null;
+  if (typeof model === 'string') {
+    return { id: model, label: model, provider: 'puter', isFree: true };
+  }
+
+  const id = model.id || model.model || model.name;
+  if (!id) return null;
+
+  return {
+    id,
+    label: model.title || model.label || model.display_name || id,
+    provider: model.provider || model.source || 'puter',
+    isFree: Boolean(model.isFree ?? model.free ?? model.is_free ?? model.free_tier),
+    price: model.price || model.cost || model.pricing || null
+  };
+}
+
+async function getModels(force = false) {
+  const cache = getModelsCache();
+  if (!force && cache.models.length && !isModelsCacheStale(MODELS_TTL_MS)) {
+    return { models: cache.models, lastUpdated: cache.lastUpdated, puterOnline: isPuterOnline(), source: 'cache' };
+  }
+
+  try {
+    const models = await listModels();
+    const normalized = (models || [])
+      .map(normalizeModel)
+      .filter(Boolean);
+    saveModelsCache(normalized);
+    return { models: normalized, lastUpdated: Date.now(), puterOnline: true, source: 'puter' };
+  } catch (error) {
+    return { models: cache.models || [], lastUpdated: cache.lastUpdated || null, puterOnline: false, error: error.message, source: 'cache' };
+  }
+}
+
+function buildEndpoint() {
+  const config = getConfig();
+  const port = process.env.PORT || config.port || 11434;
+  return `http://localhost:${port}/v1/chat/completions`;
+}
+
+async function buildStatePayload(forceModels = false) {
+  const config = getConfig();
+  const models = await getModels(forceModels);
+  const health = getHealthInfo();
+
+  return {
+    endpoint: buildEndpoint(),
+    config,
+    presets: getSavedConfigs(),
+    models: models.models,
+    modelsLastUpdated: models.lastUpdated,
+    emulatorActive: isEmulatorActive(),
+    puterOnline: models.puterOnline,
+    lastConfig: getLastConfig(),
+    health: {
+      lastSuccessfulCompletion: health.lastSuccessfulCompletion,
+      lastError: health.lastError
+    }
+  };
+}
 
 // OpenAI-compatible endpoint
 app.post('/v1/chat/completions', async (req, res) => {
@@ -32,148 +98,85 @@ app.post('/v1/chat/completions', async (req, res) => {
   }
 });
 
-// Health check
-app.get('/health', (req, res) => {
-  const config = getConfig();
-  const health = getHealthInfo();
-
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    emulatorActive: isEmulatorActive(),
-    puterOnline: isPuterOnline(),
-    config: {
-      puterModel: config.puterModel,
-      spoofedModel: config.spoofedOpenAIModelId,
-      port: config.port
-    },
-    lastSuccessfulCompletion: health.lastSuccessfulCompletion,
-    lastError: health.lastError
-  });
+// Health check + Puter connectivity
+app.get('/health', async (req, res) => {
+  try {
+    const online = await checkConnectivity();
+    res.json({ online: online === true, message: online ? 'Puter is reachable' : 'Puter appears offline' });
+  } catch (error) {
+    res.status(503).json({ online: false, message: error.message || 'Unable to reach Puter' });
+  }
 });
 
-// Emulator status
-app.get('/api/emulator/status', async (req, res) => {
-  const config = getConfig();
-  const online = await checkConnectivity();
-
-  res.json({
-    emulatorActive: isEmulatorActive(),
-    puterOnline: online,
-    currentConfig: { puterModel: config.puterModel, spoofedOpenAIModelId: config.spoofedOpenAIModelId },
-    lastConfig: getLastConfig()
-  });
+// Config state for UI
+app.get('/config/state', async (req, res) => {
+  const force = req.query.force === 'true';
+  const payload = await buildStatePayload(force);
+  res.json(payload);
 });
 
-// Current configuration
-app.get('/config/current', (req, res) => {
-  const config = getConfig();
-  const cache = getModelsCache();
-
-  res.json({
-    config,
-    models: cache.models,
-    modelsLastUpdated: cache.lastUpdated,
-    savedConfigs: getSavedConfigs(),
-    emulatorActive: isEmulatorActive(),
-    puterOnline: isPuterOnline(),
-    lastConfig: getLastConfig()
-  });
-});
-
-// Update configuration
-app.post('/config/update', (req, res) => {
-  const { puterModel, spoofedOpenAIModelId, port } = req.body;
+app.post('/config/save', (req, res) => {
+  const { puterModelId, spoofedOpenAIModelId, port } = req.body;
   const updates = {};
-  if (puterModel !== undefined) updates.puterModel = puterModel;
+  if (puterModelId !== undefined) updates.puterModel = puterModelId;
   if (spoofedOpenAIModelId !== undefined) updates.spoofedOpenAIModelId = spoofedOpenAIModelId;
   if (port !== undefined) updates.port = parseInt(port, 10);
 
-  if (updateConfig(updates)) {
+  const success = updateConfig(updates);
+  if (success) {
     res.json({ success: true, config: getConfig() });
   } else {
-    res.status(500).json({ success: false, error: 'Failed to update configuration' });
+    res.status(500).json({ success: false, error: 'Failed to save configuration' });
   }
+});
+
+app.post('/config/savePreset', (req, res) => {
+  const { id, name, puterModelId, spoofedOpenAIModelId } = req.body;
+  if (!name?.trim()) return res.status(400).json({ success: false, error: 'Name is required' });
+  if (!puterModelId) return res.status(400).json({ success: false, error: 'Puter model ID is required' });
+
+  if (id) {
+    if (!getSavedConfigById(id)) return res.status(404).json({ success: false, error: 'Preset not found' });
+    const ok = updateSavedConfig(id, name.trim(), puterModelId, spoofedOpenAIModelId);
+    const updated = ok ? getSavedConfigById(id) : null;
+    return ok ? res.json({ success: true, preset: updated }) : res.status(500).json({ success: false, error: 'Failed to update preset' });
+  }
+
+  const preset = addSavedConfig(name.trim(), puterModelId, spoofedOpenAIModelId);
+  if (preset) return res.json({ success: true, preset });
+  return res.status(500).json({ success: false, error: 'Failed to save preset' });
 });
 
 // Models cache
-app.get('/api/models', (req, res) => {
-  const cache = getModelsCache();
-  res.json({ models: cache.models, lastUpdated: cache.lastUpdated, puterOnline: isPuterOnline() });
+app.get('/models', async (req, res) => {
+  const force = req.query.force === 'true';
+  const models = await getModels(force);
+  res.json(models);
 });
 
-app.post('/api/models/refresh', async (req, res) => {
-  try {
-    const models = await listModels();
-    saveModelsCache(models);
-    res.json({ success: true, models, lastUpdated: Date.now(), puterOnline: true });
-  } catch (error) {
-    res.status(503).json({ success: false, error: error.message, puterOnline: false });
-  }
-});
-
-// Saved configurations
-app.get('/api/saved-configs', (req, res) => {
-  res.json({ configs: getSavedConfigs() });
-});
-
-app.post('/api/saved-configs', (req, res) => {
-  const { name, puterModelId, spoofedOpenAIModelId } = req.body;
-  if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
-  if (!puterModelId) return res.status(400).json({ error: 'Puter model ID is required' });
-
-  const config = addSavedConfig(name.trim(), puterModelId, spoofedOpenAIModelId);
-  if (config) {
-    res.json({ success: true, config });
-  } else {
-    res.status(500).json({ error: 'Failed to save configuration' });
-  }
-});
-
-app.put('/api/saved-configs/:id', (req, res) => {
-  const { name } = req.body;
-  if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
-  if (!getSavedConfigById(req.params.id)) return res.status(404).json({ error: 'Not found' });
-
-  if (updateSavedConfigName(req.params.id, name.trim())) {
-    res.json({ success: true });
-  } else {
-    res.status(500).json({ error: 'Failed to rename' });
-  }
-});
-
-app.delete('/api/saved-configs/:id', (req, res) => {
-  if (!getSavedConfigById(req.params.id)) return res.status(404).json({ error: 'Not found' });
-
-  if (deleteSavedConfig(req.params.id)) {
-    res.json({ success: true });
-  } else {
-    res.status(500).json({ error: 'Failed to delete' });
-  }
-});
-
-// Emulator control
-app.post('/api/emulator/start', async (req, res) => {
+// Emulator control toggles the active config
+app.post('/emulator/start', async (req, res) => {
   const { puterModelId, spoofedOpenAIModelId } = req.body;
   if (!puterModelId) return res.status(400).json({ success: false, error: 'Puter model ID is required' });
 
-  const online = await checkConnectivity();
-  if (!online) return res.status(503).json({ success: false, error: 'Puter is offline' });
+  const models = await getModels(true);
+  if (!models.puterOnline) {
+    return res.status(503).json({ success: false, error: 'Puter is offline' });
+  }
 
-  const cache = getModelsCache();
-  if (cache.models.length > 0 && !cache.models.some(m => m.id === puterModelId)) {
+  if (models.models.length && !models.models.some(m => m.id === puterModelId)) {
     return res.status(400).json({ success: false, error: `Model "${puterModelId}" not found` });
   }
 
   if (startEmulator(puterModelId, spoofedOpenAIModelId)) {
     logInfo(`Emulator started: ${puterModelId}`);
-    res.json({ success: true, config: { puterModel: puterModelId, spoofedOpenAIModelId: spoofedOpenAIModelId || '' } });
+    res.json({ success: true, config: { puterModelId, spoofedOpenAIModelId: spoofedOpenAIModelId || '' } });
   } else {
     res.status(500).json({ success: false, error: 'Failed to start' });
   }
 });
 
-app.post('/api/emulator/stop', (req, res) => {
+app.post('/emulator/stop', (req, res) => {
   if (stopEmulator()) {
     logInfo('Emulator stopped');
     res.json({ success: true });
@@ -192,12 +195,12 @@ function startServer() {
 
   const server = app.listen(port, '127.0.0.1', () => {
     logInfo(`Puter Local Model Emulator started on http://localhost:${port}`);
-    logInfo(`OpenAI endpoint: http://localhost:${port}/v1/chat/completions`);
+    logInfo(`OpenAI endpoint: ${buildEndpoint()}`);
     logInfo(`Emulator active: ${isEmulatorActive()}`);
 
     // Refresh models cache in background
-    listModels()
-      .then(models => {
+    getModels(true)
+      .then(({ models }) => {
         saveModelsCache(models);
         logInfo(`Models cache: ${models.length} models`);
       })

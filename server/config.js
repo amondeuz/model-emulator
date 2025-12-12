@@ -5,15 +5,22 @@
 const fs = require('fs');
 const path = require('path');
 
-const CONFIG_PATH = path.join(__dirname, '..', 'config', 'default.json');
-const MODELS_CACHE_PATH = path.join(__dirname, '..', 'config', 'models-cache.json');
-const SAVED_CONFIGS_PATH = path.join(__dirname, '..', 'config', 'saved-configs.json');
+const CONFIG_DIR = path.join(__dirname, '..', 'config');
+const CONFIG_PATH = path.join(CONFIG_DIR, 'default.json');
+const MODELS_CACHE_PATH = path.join(CONFIG_DIR, 'models-cache.json');
+const SAVED_CONFIGS_PATH = path.join(CONFIG_DIR, 'saved-configs.json');
+
+// Ensure config directory exists so the UI can write cache/preset files
+if (!fs.existsSync(CONFIG_DIR)) {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
+}
 
 let cachedConfig = null;
 let cachedModels = null;
 let cachedSavedConfigs = null;
 let configMtime = null;
 let emulatorActive = false;
+const MODELS_CACHE_TTL = 1000 * 60 * 30; // 30 minutes
 
 function generateId() {
   return `cfg-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
@@ -98,6 +105,12 @@ function getModelsCache() {
   return { models: [], lastUpdated: null };
 }
 
+function isModelsCacheStale(ttlMs = MODELS_CACHE_TTL) {
+  const cache = getModelsCache();
+  if (!cache.lastUpdated) return true;
+  return Date.now() - cache.lastUpdated > ttlMs;
+}
+
 function saveModelsCache(models) {
   try {
     const cache = { lastUpdated: Date.now(), models };
@@ -147,11 +160,13 @@ function addSavedConfig(name, puterModelId, spoofedOpenAIModelId) {
   return saveSavedConfigs(configs) ? newConfig : null;
 }
 
-function updateSavedConfigName(configId, newName) {
+function updateSavedConfig(configId, newName, puterModelId, spoofedOpenAIModelId) {
   const configs = getSavedConfigs();
   const config = configs.find(c => c.id === configId);
   if (!config) return false;
-  config.name = newName;
+  if (newName) config.name = newName;
+  if (puterModelId) config.puterModelId = puterModelId;
+  if (spoofedOpenAIModelId !== undefined) config.spoofedOpenAIModelId = spoofedOpenAIModelId || '';
   return saveSavedConfigs(configs);
 }
 
@@ -180,10 +195,11 @@ module.exports = {
   startEmulator,
   stopEmulator,
   getModelsCache,
+  isModelsCacheStale,
   saveModelsCache,
   getSavedConfigs,
   addSavedConfig,
-  updateSavedConfigName,
+  updateSavedConfig,
   deleteSavedConfig,
   getSavedConfigById,
   getLastConfig

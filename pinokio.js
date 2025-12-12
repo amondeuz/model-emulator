@@ -1,44 +1,79 @@
-/**
- * Pinokio app definition for Puter Local Model Emulator
- *
- * This app provides a local OpenAI-compatible endpoint backed by Puter AI,
- * allowing any Pinokio tool to use Puter models as if they were local models.
- */
+const fs = require('fs');
+const path = require('path');
+const net = require('net');
 
-module.exports = {
-  // App metadata
+const SERVER_PORT = 11434;
+
+function isInstalled() {
+  return fs.existsSync(path.join(__dirname, 'node_modules'));
+}
+
+function isServerRunning(port = SERVER_PORT) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ port, host: '127.0.0.1' }, () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on('error', () => resolve(false));
+  });
+}
+
+module.exports = ({ menu, script }) => menu.Launcher({
   title: "Puter Local Model Emulator",
-  description: "Local OpenAI-compatible endpoint backed by Puter AI. Use 500+ AI models through a local HTTP server that any Pinokio app can connect to.",
-
-  // Icon (placeholder - add icon.png to the root directory)
+  description: "Local OpenAI-compatible endpoint backed by Puter AI.",
   icon: "icon.png",
 
-  // Menu items for Pinokio UI
-  menu: [
-    {
-      html: "<i class='fa-solid fa-download'></i> Install",
-      href: "install.json",
-      description: "Install dependencies (npm install)"
+  menu: () => [
+    { html: "<i class='fa-solid fa-robot'></i> Emulator", route: "/config.html" },
+    { html: "<i class='fa-solid fa-rotate'></i> Update", script: "update" }
+  ],
+
+  scripts: {
+    install: {
+      description: "Install dependencies",
+      run: [
+        { method: "log", params: { raw: "Installing dependencies..." } },
+        { method: "shell.run", params: { message: "npm install" } }
+      ]
     },
-    {
-      html: "<i class='fa-solid fa-play'></i> Start Server",
-      href: "start.json",
-      description: "Start the local model emulator server"
+    start: {
+      description: "Start emulator server",
+      daemon: true,
+      run: [
+        { method: "log", params: { raw: "Starting Puter Local Model Emulator..." } },
+        { method: "shell.run", params: { message: "node server/index.js", venv: false } }
+      ]
     },
-    {
-      html: "<i class='fa-solid fa-gear'></i> Configure",
-      href: "config.json",
-      description: "Open configuration UI in browser"
+    stop: {
+      description: "Stop emulator server",
+      run: [
+        { method: "shell.run", params: { message: "{{platform === 'win32' ? 'taskkill /F /IM node.exe' : 'pkill -f \"node server/index.js\"'}}" } },
+        { method: "log", params: { raw: "Server stopped" } }
+      ]
     },
-    {
-      html: "<i class='fa-solid fa-heart-pulse'></i> Health Check",
-      href: "health.json",
-      description: "Check server health and status"
-    },
-    {
-      html: "<i class='fa-solid fa-stop'></i> Stop Server",
-      href: "stop.json",
-      description: "Stop the running server"
+    update: {
+      description: "Update this app from git",
+      run: [
+        { method: "log", params: { raw: "Updating repository..." } },
+        { method: "shell.run", params: { message: "git pull" } }
+      ]
     }
-  ]
-};
+  },
+
+  state: {
+    entry: "/config.html",
+    installed: async () => isInstalled(),
+    running: async () => isServerRunning(),
+    async launch({ run, route }) {
+      if (!isInstalled()) {
+        await run('install');
+      }
+
+      if (!(await isServerRunning())) {
+        await run('start');
+      }
+
+      return route('/config.html');
+    }
+  }
+});

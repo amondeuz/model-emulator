@@ -15,7 +15,7 @@
     {
       "method": "log",
       "params": {
-        "raw": "✅ Installation complete! Use 'Start Server' to run the emulator."
+        "raw": "✅ Installation complete! The emulator will start automatically and can be controlled from the Emulator screen."
       }
     }
   ]

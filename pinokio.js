@@ -2,13 +2,23 @@ const fs = require('fs');
 const path = require('path');
 const net = require('net');
 
-const SERVER_PORT = 11434;
+function getConfiguredPort() {
+  try {
+    const configPath = path.join(__dirname, 'config', 'default.json');
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (config.port) return config.port;
+    }
+  } catch (error) {}
+
+  return 11434;
+}
 
 function isInstalled() {
   return fs.existsSync(path.join(__dirname, 'node_modules'));
 }
 
-function isServerRunning(port = SERVER_PORT) {
+function isServerRunning(port = getConfiguredPort()) {
   return new Promise((resolve) => {
     const socket = net.createConnection({ port, host: '127.0.0.1' }, () => {
       socket.destroy();

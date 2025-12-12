@@ -79,6 +79,11 @@ async function chat(messagesOrPrompt, options = {}) {
       }
     }
 
+    // Treat empty response as an error
+    if (!text) {
+      throw new Error('Backend returned empty response');
+    }
+
     return { text, usage };
   } catch (error) {
     puterOnline = false;
@@ -93,6 +98,17 @@ function estimateTokens(text) {
 
 function classifyError(error) {
   const msg = (error.message || '').toLowerCase();
+  const code = error.code || '';
+
+  // Network/connectivity errors → 503 Service Unavailable
+  const networkCodes = ['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET', 'ENETUNREACH', 'EAI_AGAIN'];
+  if (networkCodes.includes(code)) {
+    return { statusCode: 503, type: 'service_unavailable' };
+  }
+  if (msg.includes('network') || msg.includes('timeout') || msg.includes('connect') ||
+      msg.includes('offline') || msg.includes('unavailable') || msg.includes('empty response')) {
+    return { statusCode: 503, type: 'service_unavailable' };
+  }
 
   if (msg.includes('auth') || msg.includes('token') || msg.includes('unauthorized')) {
     return { statusCode: 401, type: 'authentication_error' };

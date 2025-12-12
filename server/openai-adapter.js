@@ -31,6 +31,14 @@ function validateRequest(body) {
     throw error;
   }
 
+  // Model is required per OpenAI spec
+  if (!body.model || typeof body.model !== 'string' || !body.model.trim()) {
+    const error = new Error('model field is required');
+    error.statusCode = 400;
+    error.type = 'invalid_request_error';
+    throw error;
+  }
+
   if (!body.messages && !body.prompt) {
     const error = new Error('Either messages or prompt field is required');
     error.statusCode = 400;
@@ -75,7 +83,7 @@ async function handleChatCompletion(requestBody) {
     const { model: requestedModel, messages, prompt, temperature, max_tokens, max_completion_tokens } = requestBody;
 
     const puterModel = config.puterModel || 'gpt-4o';
-    const responseModel = config.spoofedOpenAIModelId || requestedModel || puterModel;
+    const responseModel = config.spoofedOpenAIModelId || requestedModel;
 
     logRequest({
       incomingModel: requestedModel,

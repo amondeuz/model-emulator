@@ -121,6 +121,18 @@
       startStopBtn.classList.toggle('primary', !active);
     }
 
+    function ensureModelInSelect(modelId) {
+      if (!modelId) return;
+      const exists = Array.from(modelSelect.options).some(opt => opt.value === modelId);
+      if (!exists) {
+        const opt = document.createElement('option');
+        opt.value = modelId;
+        opt.textContent = `${modelId} (missing)`;
+        opt.disabled = true;
+        modelSelect.appendChild(opt);
+      }
+    }
+
     function populateModels(selectedId) {
       modelSelect.innerHTML = '';
       if (!models.length) {
@@ -138,6 +150,7 @@
         modelSelect.appendChild(opt);
       });
 
+      ensureModelInSelect(selectedId);
       if (selectedId) {
         modelSelect.value = selectedId;
       }
@@ -162,6 +175,7 @@
     function applyPreset(presetId) {
       const preset = presets.find(p => p.id === presetId);
       if (!preset) return;
+      ensureModelInSelect(preset.puterModelId);
       modelSelect.value = preset.puterModelId;
       spoofedInput.value = preset.spoofedOpenAIModelId || '';
       presetActionBtn.textContent = 'Edit';
@@ -301,6 +315,7 @@
         setEmulatorState(state.emulatorActive);
         setIndicator(state.puterOnline !== false);
         setMessage('Ready.');
+        await refreshHealth();
       } catch (err) {
         setMessage('Failed to load state: ' + err.message);
       }

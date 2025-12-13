@@ -15,27 +15,28 @@ module.exports = {
     health: require('./health.json'),
     config: require('./config.json'),
   },
-  menu: async (kernel, info) => {
-    const installed = await info.exists('node_modules');
-    const running = installed ? await info.running('start.json') : false;
-
-    if (!installed) {
-      return [
-        { text: 'Install', icon: 'fa-solid fa-download', href: 'install.json', default: true },
-        { text: 'Update', icon: 'fa-solid fa-rotate', href: 'update.json' },
-      ];
+  menu: [
+    // Routes directly to the emulator UI served by the local server.
+    { text: 'Emulator', icon: 'fa-solid fa-robot', route: '/config.html', default: true },
+    // Manual update hook for fetching the latest code.
+    { text: 'Update', icon: 'fa-solid fa-rotate', href: 'update.json' },
+  ],
+  // Installation detection relies on the presence of node_modules created by install.json.
+  installed: async (kernel, info) => info.exists('node_modules'),
+  // Server health is inferred from the start.json daemon process state.
+  running: async (kernel, info) => info.running('start.json'),
+  // On launch, ensure dependencies are installed and the server is running, then route to the UI.
+  launch: async (kernel, info) => {
+    const isInstalled = await module.exports.installed(kernel, info);
+    if (!isInstalled) {
+      await kernel.run('install');
     }
 
-    if (!running) {
-      return [
-        { text: 'Start', icon: 'fa-solid fa-play', href: 'start.json', default: true },
-        { text: 'Update', icon: 'fa-solid fa-rotate', href: 'update.json' },
-      ];
+    const isRunning = await module.exports.running(kernel, info);
+    if (!isRunning) {
+      await kernel.run('start');
     }
 
-    return [
-      { text: 'Emulator', icon: 'fa-solid fa-robot', href: 'config.json', default: true },
-      { text: 'Update', icon: 'fa-solid fa-rotate', href: 'update.json' },
-    ];
+    return { route: '/config.html' };
   },
 };

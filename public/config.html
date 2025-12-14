@@ -55,9 +55,8 @@
     <div class="section">
       <label>Puter Model</label>
       <div class="row">
-        <select id="model-select" size="1">
-          <option value="">-- Select a Puter model --</option>
-        </select>
+        <input type="text" id="model-select" list="puter-models-list" placeholder="Search or select a Puter model...">
+        <datalist id="puter-models-list"></datalist>
         <button id="refresh-models" class="secondary">Refresh Models</button>
       </div>
     </div>
@@ -96,7 +95,8 @@
   <script>
     const presetSelect = document.getElementById('preset-select');
     const presetActionBtn = document.getElementById('preset-action');
-    const modelSelect = document.getElementById('model-select');
+    const modelInput = document.getElementById('model-select');
+    const modelDatalist = document.getElementById('puter-models-list');
     const refreshModelsBtn = document.getElementById('refresh-models');
     const spoofedInput = document.getElementById('spoofed-model');
     const startStopBtn = document.getElementById('start-stop');
@@ -105,6 +105,8 @@
     const emulatorPill = document.getElementById('emulator-pill');
     const refreshHealthBtn = document.getElementById('refresh-health');
     const statusMessage = document.getElementById('status-message');
+
+    const BLOCKED_MODELS = ['abuse', 'costly', 'fake', 'model-fallback-test-1', 'usage-limited'];
 
     let presets = [];
     let models = [];
@@ -131,39 +133,41 @@
     }
 
     function ensureModelInSelect(modelId) {
-      if (!modelId) return;
-      const select = document.getElementById('model-select');
-      const exists = Array.from(select.options).some(opt => opt.value === modelId);
+      if (!modelId || BLOCKED_MODELS.includes(modelId)) return;
+      const exists = Array.from(modelDatalist.options).some(opt => opt.value === modelId);
       if (!exists) {
         const opt = document.createElement('option');
         opt.value = modelId;
         opt.textContent = `${modelId} (cached)`;
-        select.appendChild(opt);
+        modelDatalist.appendChild(opt);
       }
     }
 
     function populateModels(selectedId) {
-      const select = document.getElementById('model-select');
-      select.innerHTML = '<option value="">-- Select a Puter model --</option>';
+      modelDatalist.innerHTML = '';
 
-      if (!models.length) {
+      const availableModels = models.filter(model => !BLOCKED_MODELS.includes(model.id));
+
+      if (!availableModels.length) {
         const opt = document.createElement('option');
         opt.value = '';
         opt.textContent = 'No models available - try refreshing';
-        opt.disabled = true;
-        select.appendChild(opt);
+        modelDatalist.appendChild(opt);
+        modelInput.value = '';
         return;
       }
 
-      models.forEach(model => {
+      availableModels.forEach(model => {
         const opt = document.createElement('option');
         opt.value = model.id;
         opt.textContent = model.label || model.id;
-        select.appendChild(opt);
+        modelDatalist.appendChild(opt);
       });
 
-      if (selectedId && models.some(m => m.id === selectedId)) {
-        select.value = selectedId;
+      if (selectedId && availableModels.some(m => m.id === selectedId)) {
+        modelInput.value = selectedId;
+      } else {
+        modelInput.value = '';
       }
     }
 
@@ -187,7 +191,7 @@
       const preset = presets.find(p => p.id === presetId);
       if (!preset) return;
       ensureModelInSelect(preset.puterModelId);
-      modelSelect.value = preset.puterModelId;
+      modelInput.value = preset.puterModelId;
       spoofedInput.value = preset.spoofedOpenAIModelId || '';
       presetActionBtn.textContent = 'Edit';
       setMessage(`Loaded preset "${preset.name}"`);
@@ -201,7 +205,7 @@
 
     async function saveConfig() {
       const body = {
-        puterModelId: modelSelect.value,
+        puterModelId: modelInput.value,
         spoofedOpenAIModelId: spoofedInput.value
       };
       await fetch('/config/save', {
@@ -212,7 +216,7 @@
     }
 
     async function handleStartStop() {
-      const puterModelId = modelSelect.value;
+      const puterModelId = modelInput.value;
       if (!puterModelId) {
         setMessage('Select a Puter model first.');
         return;
@@ -258,7 +262,7 @@
         const res = await fetch(`/models${force ? '?force=true' : ''}`);
         const data = await res.json();
         models = data.models || [];
-        populateModels(modelSelect.value || (models[0] && models[0].id));
+        populateModels(modelInput.value || undefined);
         setIndicator(data.puterOnline !== false);
         setMessage(force ? 'Models refreshed from Puter.' : 'Models loaded.');
       } catch (err) {
@@ -286,7 +290,7 @@
       const body = {
         id: existingId || undefined,
         name: name.trim(),
-        puterModelId: modelSelect.value,
+        puterModelId: modelInput.value,
         spoofedOpenAIModelId: spoofedInput.value
       };
       const res = await fetch('/config/savePreset', {

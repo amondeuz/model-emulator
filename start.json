@@ -11,25 +11,24 @@
       "method": "shell.run",
       "params": {
         "message": "node server/index.js",
-        "path": "."
-      },
-      "on": [
-        {
-          "event": "/Puter Local Model Emulator started on (http:\/\/localhost:\d+)/",
-          "set": {
-            "baseUrl": "$1"
-          },
-          "done": true
-        }
-      ]
+        "on": [
+          {
+            "event": "/http:\\/\\/localhost:[0-9]+\\/config\\.html/",
+            "done": true
+          }
+        ]
+      }
     },
     {
       "method": "local.set",
       "params": {
-        "uri": "start.json",
-        "data": {
-          "uiUrl": "{{baseUrl}}/config.html"
-        }
+        "url": "{{input.event[0]}}"
+      }
+    },
+    {
+      "method": "log",
+      "params": {
+        "raw": "UI ready at {{input.event[0]}}"
       }
     }
   ]

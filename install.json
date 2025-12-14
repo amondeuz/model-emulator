@@ -9,13 +9,8 @@
     {
       "method": "shell.run",
       "params": {
-        "message": "npm install"
-      }
-    },
-    {
-      "method": "log",
-      "params": {
-        "raw": "✅ Installation complete! The emulator will start automatically and can be controlled from the Emulator screen."
+        "message": "npm install",
+        "path": "."
       }
     }
   ]

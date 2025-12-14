@@ -33,7 +33,7 @@ The app will automatically:
 
 ### Manual Installation
 ```bash
-git clone <repository-url>
+git clone https://github.com/amondeuz/model-emulator.git
 cd puter-local-model-emulator
 npm install
 npm start

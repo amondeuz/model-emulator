@@ -51,6 +51,10 @@ node server/index.js
 
 The server will start on `http://localhost:11434` by default.
 
+### Stopping the Server
+
+Use Pinokio's native **Stop start.json** button from the app's home page to stop the daemon. A separate Stop tab is no longer provided in the app menu.
+
 ### Configuring Models
 
 **Via UI (Recommended):**

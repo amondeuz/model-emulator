@@ -32,9 +32,13 @@
     .icon-button { background: #eef2f7; color: #1f2933; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; }
     .message { flex: 1; color: #1f2933; font-size: 13px; min-height: 18px; }
     .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #eef2f7; font-size: 12px; margin-left: 6px; }
+    .close-btn { position: fixed; top: 20px; right: 20px; width: 36px; height: 36px; border-radius: 50%; background: #e35d6a; color: white; border: none; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(227, 93, 106, 0.3); z-index: 1000; transition: all 0.2s; }
+    .close-btn:hover { background: #d14855; transform: scale(1.05); box-shadow: 0 4px 12px rgba(227, 93, 106, 0.4); }
+    .close-btn:active { transform: scale(0.95); }
   </style>
 </head>
 <body>
+  <button id="close-btn" class="close-btn" title="Stop server and close">×</button>
   <div class="container">
     <header>
       <h1>Puter Local Model Emulator</h1>
@@ -54,7 +58,8 @@
     <div class="section">
       <label>Puter Model</label>
       <div class="row">
-        <select id="model-select"></select>
+        <input type="text" id="model-select" list="puter-models-list" placeholder="Search or select a Puter model...">
+        <datalist id="puter-models-list"></datalist>
         <button id="refresh-models" class="secondary">Refresh Models</button>
       </div>
     </div>
@@ -62,7 +67,7 @@
     <div class="section">
       <label>Spoofed OpenAI Model ID</label>
       <div class="row">
-        <input type="text" id="spoofed-model" list="common-models" placeholder="e.g. gpt-4o-mini">
+        <input type="text" id="spoofed-model" list="common-models" placeholder="Search or select a model to spoof...">
         <datalist id="common-models">
           <option value="gpt-4o">OpenAI GPT-4o</option>
           <option value="claude-3-5-sonnet-20241022">Anthropic Claude 3.5 Sonnet</option>
@@ -86,7 +91,6 @@
       </div>
       <div id="emulator-pill" class="pill">Emulator stopped</div>
       <button id="refresh-health" class="icon-button" title="Refresh status">⟳</button>
-      <button id="stop-server" class="danger" style="margin-left: auto;" title="Stop server">Stop Server</button>
       <div id="status-message" class="message"></div>
     </div>
   </div>
@@ -130,23 +134,23 @@
 
     function ensureModelInSelect(modelId) {
       if (!modelId) return;
-      const exists = Array.from(modelSelect.options).some(opt => opt.value === modelId);
+      const datalist = document.getElementById('puter-models-list');
+      const exists = Array.from(datalist.options).some(opt => opt.value === modelId);
       if (!exists) {
         const opt = document.createElement('option');
         opt.value = modelId;
         opt.textContent = `${modelId} (missing)`;
-        opt.disabled = true;
-        modelSelect.appendChild(opt);
+        datalist.appendChild(opt);
       }
     }
 
     function populateModels(selectedId) {
-      modelSelect.innerHTML = '';
+      const datalist = document.getElementById('puter-models-list');
+      datalist.innerHTML = '';
+
       if (!models.length) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = 'No models available';
-        modelSelect.appendChild(opt);
+        // Keep input enabled but show placeholder
+        document.getElementById('model-select').placeholder = 'No models available - try refreshing';
         return;
       }
 
@@ -154,12 +158,11 @@
         const opt = document.createElement('option');
         opt.value = model.id;
         opt.textContent = model.label || model.id;
-        modelSelect.appendChild(opt);
+        datalist.appendChild(opt);
       });
 
-      ensureModelInSelect(selectedId);
       if (selectedId) {
-        modelSelect.value = selectedId;
+        document.getElementById('model-select').value = selectedId;
       }
     }
 
@@ -346,8 +349,8 @@
     startStopBtn.addEventListener('click', handleStartStop);
     refreshHealthBtn.addEventListener('click', refreshHealth);
 
-    document.getElementById('stop-server').addEventListener('click', async () => {
-      if (!confirm('Stop the emulator server? This will close Pinokio.')) return;
+    document.getElementById('close-btn').addEventListener('click', async () => {
+      if (!confirm('Stop the emulator server? This will close the application.')) return;
       try {
         await fetch('/shutdown', { method: 'POST' });
       } catch (err) {

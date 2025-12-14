@@ -14,6 +14,7 @@
     label { display: block; font-weight: 600; margin-bottom: 6px; }
     input[type="text"], select { width: 100%; padding: 11px 12px; border: 1px solid #d9e1ec; border-radius: 10px; font-size: 14px; }
     input:focus, select:focus { outline: none; border-color: #4a9eff; box-shadow: 0 0 0 3px rgba(74,158,255,0.15); }
+    select { max-height: 300px; overflow-y: auto; }
     .row { display: flex; gap: 10px; align-items: center; }
     .row > *:first-child { flex: 1; }
     button { border: none; border-radius: 10px; padding: 11px 16px; font-weight: 600; cursor: pointer; font-size: 14px; }
@@ -32,13 +33,9 @@
     .icon-button { background: #eef2f7; color: #1f2933; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; }
     .message { flex: 1; color: #1f2933; font-size: 13px; min-height: 18px; }
     .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #eef2f7; font-size: 12px; margin-left: 6px; }
-    .close-btn { position: fixed; top: 20px; right: 20px; width: 36px; height: 36px; border-radius: 50%; background: #e35d6a; color: white; border: none; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(227, 93, 106, 0.3); z-index: 1000; transition: all 0.2s; }
-    .close-btn:hover { background: #d14855; transform: scale(1.05); box-shadow: 0 4px 12px rgba(227, 93, 106, 0.4); }
-    .close-btn:active { transform: scale(0.95); }
   </style>
 </head>
 <body>
-  <button id="close-btn" class="close-btn" title="Stop server and close">×</button>
   <div class="container">
     <header>
       <h1>Puter Local Model Emulator</h1>
@@ -58,8 +55,9 @@
     <div class="section">
       <label>Puter Model</label>
       <div class="row">
-        <input type="text" id="model-select" list="puter-models-list" placeholder="Search or select a Puter model...">
-        <datalist id="puter-models-list"></datalist>
+        <select id="model-select" size="1">
+          <option value="">-- Select a Puter model --</option>
+        </select>
         <button id="refresh-models" class="secondary">Refresh Models</button>
       </div>
     </div>
@@ -134,23 +132,26 @@
 
     function ensureModelInSelect(modelId) {
       if (!modelId) return;
-      const datalist = document.getElementById('puter-models-list');
-      const exists = Array.from(datalist.options).some(opt => opt.value === modelId);
+      const select = document.getElementById('model-select');
+      const exists = Array.from(select.options).some(opt => opt.value === modelId);
       if (!exists) {
         const opt = document.createElement('option');
         opt.value = modelId;
-        opt.textContent = `${modelId} (missing)`;
-        datalist.appendChild(opt);
+        opt.textContent = `${modelId} (cached)`;
+        select.appendChild(opt);
       }
     }
 
     function populateModels(selectedId) {
-      const datalist = document.getElementById('puter-models-list');
-      datalist.innerHTML = '';
+      const select = document.getElementById('model-select');
+      select.innerHTML = '<option value="">-- Select a Puter model --</option>';
 
       if (!models.length) {
-        // Keep input enabled but show placeholder
-        document.getElementById('model-select').placeholder = 'No models available - try refreshing';
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No models available - try refreshing';
+        opt.disabled = true;
+        select.appendChild(opt);
         return;
       }
 
@@ -158,11 +159,11 @@
         const opt = document.createElement('option');
         opt.value = model.id;
         opt.textContent = model.label || model.id;
-        datalist.appendChild(opt);
+        select.appendChild(opt);
       });
 
-      if (selectedId) {
-        document.getElementById('model-select').value = selectedId;
+      if (selectedId && models.some(m => m.id === selectedId)) {
+        select.value = selectedId;
       }
     }
 
@@ -315,12 +316,8 @@
         presets = state.presets || [];
         models = state.models || [];
         populatePresets();
-        populateModels(state.lastConfig?.puterModelId || state.config?.puterModel);
-        if (state.lastConfig?.spoofedOpenAIModelId) {
-          spoofedInput.value = state.lastConfig.spoofedOpenAIModelId;
-        } else if (state.config?.spoofedOpenAIModelId) {
-          spoofedInput.value = state.config.spoofedOpenAIModelId;
-        }
+        populateModels(); // Don't auto-select, let user choose
+        // Don't auto-fill spoofed model field - let user choose
         setEmulatorState(state.emulatorActive);
         setIndicator(state.puterOnline !== false);
         setMessage('Ready.');
@@ -348,15 +345,6 @@
     refreshModelsBtn.addEventListener('click', () => refreshModels(true));
     startStopBtn.addEventListener('click', handleStartStop);
     refreshHealthBtn.addEventListener('click', refreshHealth);
-
-    document.getElementById('close-btn').addEventListener('click', async () => {
-      if (!confirm('Stop the emulator server? This will close the application.')) return;
-      try {
-        await fetch('/shutdown', { method: 'POST' });
-      } catch (err) {
-        // Server stopped, expected error
-      }
-    });
 
     init();
   </script>

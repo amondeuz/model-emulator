@@ -158,10 +158,11 @@
         modelDatalist.appendChild(opt);
       });
 
-      if (selectedId && availableModels.some(m => m.id === selectedId)) {
-        modelSelect.value = selectedId;
-      } else if (!modelSelect.value && availableModels[0]) {
-        modelSelect.value = availableModels[0].id;
+      const targetModelId = selectedId || modelSelect.value;
+      if (targetModelId && availableModels.some(m => m.id === targetModelId)) {
+        modelSelect.value = targetModelId;
+      } else {
+        modelSelect.value = '';
       }
     }
 

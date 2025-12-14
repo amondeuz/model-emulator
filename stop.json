@@ -1,9 +1,9 @@
 {
   "run": [
     {
-      "method": "shell.run",
+      "method": "script.stop",
       "params": {
-        "message": "{{platform === 'win32' ? 'taskkill /F /IM node.exe' : 'pkill -f \"node server/index.js\"'}}"
+        "uri": "start.json"
       }
     },
     {

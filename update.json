@@ -9,7 +9,8 @@
     {
       "method": "shell.run",
       "params": {
-        "message": "node update.js"
+        "message": "node update.js",
+        "path": "."
       }
     }
   ]

@@ -8,35 +8,45 @@ module.exports = {
   description,
   icon,
   menu: async (kernel, info) => {
-    const installed = await info.exists('node_modules');
-    const installing = await info.running('install.json');
-    const starting = await info.running('start.json');
-    const localState = await info.local('start.json');
-    const uiUrl = localState && localState.uiUrl;
+    const updateItem = { text: 'Update', icon: 'fa-solid fa-rotate', href: 'update.json' };
 
-    if (!installed) {
-      if (installing) {
-        return [{ text: 'Installing', href: 'install.json' }];
-      }
-      return [{ text: 'Install', href: 'install.json', default: true }];
-    }
-
-    if (!starting) {
+    const installing = info.running('install.json');
+    if (installing) {
       return [
-        { text: 'Start', href: 'start.json', default: true },
-        { text: 'Update', href: 'update.json' },
+        { text: 'Loading...', icon: 'fa-solid fa-robot', href: 'install.json' },
+        updateItem
       ];
     }
 
-    if (starting && !uiUrl) {
-      return [{ text: 'Starting', href: 'start.json' }];
+    const installed = info.exists('node_modules');
+    if (!installed) {
+      return [
+        { text: 'Loading...', icon: 'fa-solid fa-robot', href: 'install.json', default: true },
+        updateItem
+      ];
+    }
+
+    const starting = info.running('start.json');
+    if (!starting) {
+      return [
+        { text: 'Starting...', icon: 'fa-solid fa-robot', href: 'start.json', default: true },
+        updateItem
+      ];
+    }
+
+    const mem = info.local('start.json');
+    const url = mem && mem.url;
+
+    if (!url) {
+      return [
+        { text: 'Starting...', icon: 'fa-solid fa-robot', href: 'start.json' },
+        updateItem
+      ];
     }
 
     return [
-      { text: 'Emulator UI', href: uiUrl },
-      { text: 'Terminal', href: 'start.json' },
-      { text: 'Stop', href: 'stop.json' },
-      { text: 'Update', href: 'update.json' },
+      { text: 'Emulator', icon: 'fa-solid fa-robot', href: url },
+      updateItem
     ];
-  },
+  }
 };

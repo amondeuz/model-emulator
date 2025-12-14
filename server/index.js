@@ -197,6 +197,7 @@ function startServer() {
     logInfo(`Puter Local Model Emulator started on http://localhost:${port}`);
     logInfo(`OpenAI endpoint: ${buildEndpoint()}`);
     logInfo(`Emulator active: ${isEmulatorActive()}`);
+    logInfo(`Config UI: http://localhost:${port}/config.html`);
 
     // Refresh models cache in background
     getModels(true)

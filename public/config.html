@@ -14,7 +14,11 @@
     label { display: block; font-weight: 600; margin-bottom: 6px; }
     input[type="text"], select { width: 100%; padding: 11px 12px; border: 1px solid #d9e1ec; border-radius: 10px; font-size: 14px; }
     input:focus, select:focus { outline: none; border-color: #4a9eff; box-shadow: 0 0 0 3px rgba(74,158,255,0.15); }
-    select { max-height: 300px; overflow-y: auto; }
+    .search-dropdown { position: relative; width: 100%; }
+    .dropdown-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1px solid #d9e1ec; border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,0.06); max-height: 260px; overflow-y: auto; padding: 6px 0; z-index: 10; display: none; }
+    .dropdown-menu.open { display: block; }
+    .dropdown-item { padding: 10px 12px; cursor: pointer; font-size: 14px; }
+    .dropdown-item:hover { background: #f3f7ff; }
     .row { display: flex; gap: 10px; align-items: center; }
     .row > *:first-child { flex: 1; }
     button { border: none; border-radius: 10px; padding: 11px 16px; font-weight: 600; cursor: pointer; font-size: 14px; }
@@ -55,8 +59,10 @@
     <div class="section">
       <label>Puter Model</label>
       <div class="row">
-        <input type="text" id="model-select" list="puter-models-list" placeholder="Search or select a Puter model...">
-        <datalist id="puter-models-list"></datalist>
+        <div class="search-dropdown">
+          <input type="text" id="model-select" autocomplete="off">
+          <div id="puter-models-list" class="dropdown-menu"></div>
+        </div>
         <button id="refresh-models" class="secondary">Refresh Models</button>
       </div>
     </div>
@@ -64,19 +70,10 @@
     <div class="section">
       <label>Spoofed OpenAI Model ID</label>
       <div class="row">
-        <input type="text" id="spoofed-model" list="common-models" placeholder="Search or select a model to spoof...">
-        <datalist id="common-models">
-          <option value="gpt-4o">OpenAI GPT-4o</option>
-          <option value="claude-3-5-sonnet-20241022">Anthropic Claude 3.5 Sonnet</option>
-          <option value="gemini-1.5-pro">Google Gemini 1.5 Pro</option>
-          <option value="llama-3.3-70b-instruct">Meta Llama 3.3 70B</option>
-          <option value="mistral-large-latest">Mistral Large</option>
-          <option value="command-r-plus">Cohere Command R+</option>
-          <option value="grok-2">xAI Grok 2</option>
-          <option value="deepseek-chat">DeepSeek Chat</option>
-          <option value="qwen-max">Alibaba Qwen Max</option>
-          <option value="jamba-1.5-large">AI21 Jamba 1.5</option>
-        </datalist>
+        <div class="search-dropdown">
+          <input type="text" id="spoofed-model" autocomplete="off">
+          <div id="common-models" class="dropdown-menu"></div>
+        </div>
         <button id="start-stop" class="primary">Start</button>
       </div>
     </div>
@@ -99,6 +96,7 @@
     const modelDatalist = document.getElementById('puter-models-list');
     const refreshModelsBtn = document.getElementById('refresh-models');
     const spoofedInput = document.getElementById('spoofed-model');
+    const spoofedList = document.getElementById('common-models');
     const startStopBtn = document.getElementById('start-stop');
     const indicatorEl = document.getElementById('puter-indicator');
     const indicatorText = indicatorEl.querySelector('.indicator-text');
@@ -133,38 +131,100 @@
 
     function ensureModelInSelect(modelId) {
       if (!modelId || BLOCKED_MODELS.includes(modelId)) return;
-      const exists = Array.from(modelDatalist.options).some(opt => opt.value === modelId);
+      const exists = models.some(model => model.id === modelId);
       if (!exists) {
-        const opt = document.createElement('option');
-        opt.value = modelId;
-        opt.label = `${modelId} (cached)`;
-        modelDatalist.appendChild(opt);
+        models.push({ id: modelId, label: `${modelId} (cached)` });
       }
     }
 
-    function populateModels(selectedId) {
-      modelDatalist.innerHTML = '';
-      const availableModels = models.filter(model => !BLOCKED_MODELS.includes(model.id));
+    function getFilteredModels(query = '') {
+      const lower = query.trim().toLowerCase();
+      return models
+        .filter(model => !BLOCKED_MODELS.includes(model.id))
+        .filter(model => {
+          if (!lower) return true;
+          const label = model.label || model.id;
+          return label.toLowerCase().includes(lower) || model.id.toLowerCase().includes(lower);
+        });
+    }
 
-      if (!availableModels.length) {
-        modelSelect.value = '';
-        return;
+    function renderDropdown(listEl, options, onSelect) {
+      listEl.innerHTML = '';
+      options.forEach(option => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+        item.textContent = option.label || option.id || option.value || '';
+        item.addEventListener('click', () => {
+          onSelect(option);
+          listEl.classList.remove('open');
+        });
+        listEl.appendChild(item);
+      });
+      if (options.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'dropdown-item';
+        empty.textContent = 'No matches';
+        empty.style.color = '#627384';
+        empty.style.cursor = 'default';
+        listEl.appendChild(empty);
+      }
+    }
+
+    function setupSearchDropdown(inputEl, listEl, getOptions, onSelect) {
+      let open = false;
+
+      function openMenu() {
+        listEl.classList.add('open');
+        open = true;
       }
 
-      availableModels.forEach(model => {
-        const opt = document.createElement('option');
-        opt.value = model.id;
-        opt.label = model.label || model.id;
-        modelDatalist.appendChild(opt);
+      function closeMenu() {
+        listEl.classList.remove('open');
+        open = false;
+      }
+
+      function refreshOptions() {
+        renderDropdown(listEl, getOptions(inputEl.value), onSelect);
+      }
+
+      inputEl.addEventListener('input', () => {
+        refreshOptions();
+        openMenu();
       });
 
-      const targetModelId = selectedId || modelSelect.value;
-      if (targetModelId && availableModels.some(m => m.id === targetModelId)) {
-        modelSelect.value = targetModelId;
-      } else {
-        modelSelect.value = '';
-      }
+      inputEl.addEventListener('click', (e) => {
+        if (open) {
+          closeMenu();
+        } else {
+          refreshOptions();
+          openMenu();
+        }
+        e.stopPropagation();
+      });
+
+      listEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      document.addEventListener('click', () => {
+        if (open) closeMenu();
+      });
+
+      return { refreshOptions, closeMenu };
     }
+
+    const spoofedOptions = [
+      { id: 'gpt-4o', label: 'OpenAI GPT-4o' },
+      { id: 'claude-3-5-sonnet-20241022', label: 'Anthropic Claude 3.5 Sonnet' },
+      { id: 'gemini-1.5-pro', label: 'Google Gemini 1.5 Pro' },
+      { id: 'llama-3.3-70b-instruct', label: 'Meta Llama 3.3 70B' },
+      { id: 'mistral-large-latest', label: 'Mistral Large' },
+      { id: 'command-r-plus', label: 'Cohere Command R+' },
+      { id: 'grok-2', label: 'xAI Grok 2' },
+      { id: 'deepseek-chat', label: 'DeepSeek Chat' },
+      { id: 'qwen-max', label: 'Alibaba Qwen Max' },
+      { id: 'jamba-1.5-large', label: 'AI21 Jamba 1.5' }
+    ];
 
     function populatePresets(selectedId) {
       presetSelect.innerHTML = '<option value="">-- No preset selected --</option>';
@@ -188,6 +248,8 @@
       ensureModelInSelect(preset.puterModelId);
       modelSelect.value = preset.puterModelId;
       spoofedInput.value = preset.spoofedOpenAIModelId || '';
+      modelDropdown.refreshOptions();
+      spoofDropdown.refreshOptions();
       presetActionBtn.textContent = 'Edit';
       setMessage(`Loaded preset "${preset.name}"`);
     }
@@ -257,7 +319,7 @@
         const res = await fetch(`/models${force ? '?force=true' : ''}`);
         const data = await res.json();
         models = data.models || [];
-        populateModels(modelSelect.value);
+        modelDropdown.refreshOptions();
         setIndicator(data.puterOnline !== false);
         setMessage(force ? 'Models refreshed from Puter.' : 'Models loaded.');
       } catch (err) {
@@ -315,8 +377,8 @@
         presets = state.presets || [];
         models = state.models || [];
         populatePresets();
-        populateModels(); // Don't auto-select, let user choose
-        // Don't auto-fill spoofed model field - let user choose
+        modelDropdown.refreshOptions(); // Don't auto-select, let user choose
+        spoofDropdown.refreshOptions(); // Don't auto-fill spoofed model field - let user choose
         setEmulatorState(state.emulatorActive);
         setIndicator(state.puterOnline !== false);
         setMessage('Ready.');
@@ -344,6 +406,30 @@
     refreshModelsBtn.addEventListener('click', () => refreshModels(true));
     startStopBtn.addEventListener('click', handleStartStop);
     refreshHealthBtn.addEventListener('click', refreshHealth);
+
+    const modelDropdown = setupSearchDropdown(
+      modelSelect,
+      modelDatalist,
+      (query) => getFilteredModels(query),
+      (option) => {
+        modelSelect.value = option.id || option.value || '';
+      }
+    );
+
+    const spoofDropdown = setupSearchDropdown(
+      spoofedInput,
+      spoofedList,
+      (query) => {
+        const lower = query.trim().toLowerCase();
+        return spoofedOptions.filter(option => {
+          if (!lower) return true;
+          return option.id.toLowerCase().includes(lower) || (option.label && option.label.toLowerCase().includes(lower));
+        });
+      },
+      (option) => {
+        spoofedInput.value = option.id || option.value || '';
+      }
+    );
 
     init();
   </script>

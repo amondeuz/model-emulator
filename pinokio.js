@@ -45,7 +45,7 @@ module.exports = {
     }
 
     return [
-      { text: 'Emulator', icon: 'fa-solid fa-robot', href: url },
+      { text: 'Emulator', icon: 'fa-solid fa-robot', href: url, default: true },
       updateItem
     ];
   }

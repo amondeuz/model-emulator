@@ -185,6 +185,13 @@ app.post('/emulator/stop', (req, res) => {
   }
 });
 
+// Shutdown endpoint
+app.post('/shutdown', (req, res) => {
+  logInfo('Shutdown requested from UI');
+  res.json({ success: true, message: 'Shutting down...' });
+  setTimeout(() => process.exit(0), 500);
+});
+
 // Root redirect
 app.get('/', (req, res) => res.redirect('/config.html'));
 

@@ -42,11 +42,6 @@
     </header>
 
     <div class="section">
-      <label>OpenAI Endpoint URL</label>
-      <div id="endpoint" class="endpoint">Loading…</div>
-    </div>
-
-    <div class="section">
       <label>Saved Configuration <span class="muted" style="font-weight:400">Load or save presets</span></label>
       <div class="row">
         <select id="preset-select">
@@ -67,7 +62,19 @@
     <div class="section">
       <label>Spoofed OpenAI Model ID</label>
       <div class="row">
-        <input type="text" id="spoofed-model" placeholder="e.g. gpt-4o-mini">
+        <input type="text" id="spoofed-model" list="common-models" placeholder="e.g. gpt-4o-mini">
+        <datalist id="common-models">
+          <option value="gpt-4o">OpenAI GPT-4o</option>
+          <option value="claude-3-5-sonnet-20241022">Anthropic Claude 3.5 Sonnet</option>
+          <option value="gemini-1.5-pro">Google Gemini 1.5 Pro</option>
+          <option value="llama-3.3-70b-instruct">Meta Llama 3.3 70B</option>
+          <option value="mistral-large-latest">Mistral Large</option>
+          <option value="command-r-plus">Cohere Command R+</option>
+          <option value="grok-2">xAI Grok 2</option>
+          <option value="deepseek-chat">DeepSeek Chat</option>
+          <option value="qwen-max">Alibaba Qwen Max</option>
+          <option value="jamba-1.5-large">AI21 Jamba 1.5</option>
+        </datalist>
         <button id="start-stop" class="primary">Start</button>
       </div>
     </div>
@@ -79,12 +86,12 @@
       </div>
       <div id="emulator-pill" class="pill">Emulator stopped</div>
       <button id="refresh-health" class="icon-button" title="Refresh status">⟳</button>
+      <button id="stop-server" class="danger" style="margin-left: auto;" title="Stop server">Stop Server</button>
       <div id="status-message" class="message"></div>
     </div>
   </div>
 
   <script>
-    const endpointEl = document.getElementById('endpoint');
     const presetSelect = document.getElementById('preset-select');
     const presetActionBtn = document.getElementById('preset-action');
     const modelSelect = document.getElementById('model-select');
@@ -302,7 +309,6 @@
     async function init() {
       try {
         const state = await fetchState();
-        endpointEl.textContent = state.endpoint;
         presets = state.presets || [];
         models = state.models || [];
         populatePresets();
@@ -339,6 +345,15 @@
     refreshModelsBtn.addEventListener('click', () => refreshModels(true));
     startStopBtn.addEventListener('click', handleStartStop);
     refreshHealthBtn.addEventListener('click', refreshHealth);
+
+    document.getElementById('stop-server').addEventListener('click', async () => {
+      if (!confirm('Stop the emulator server? This will close Pinokio.')) return;
+      try {
+        await fetch('/shutdown', { method: 'POST' });
+      } catch (err) {
+        // Server stopped, expected error
+      }
+    });
 
     init();
   </script>

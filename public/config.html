@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Puter Model Emulator</title>
+  <title>Virtual Model Emulator</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color: #1f2933; }
@@ -19,15 +19,17 @@
     .dropdown-menu.open { display: block; }
     .dropdown-item { padding: 10px 12px; cursor: pointer; font-size: 14px; }
     .dropdown-item:hover { background: #f3f7ff; }
+    .dropdown-item .provider-badge { font-size: 11px; color: #627384; margin-left: 8px; }
     .row { display: flex; gap: 10px; align-items: center; }
     .row > *:first-child { flex: 1; }
     button { border: none; border-radius: 10px; padding: 11px 16px; font-weight: 600; cursor: pointer; font-size: 14px; }
     .primary { background: #4a9eff; color: white; }
     .secondary { background: #eef2f7; color: #1f2933; }
     .danger { background: #e35d6a; color: white; }
+    .success { background: #22c55e; color: white; }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .endpoint { background: #f3f7ff; border: 1px solid #d9e7ff; padding: 12px 14px; border-radius: 10px; font-family: monospace; font-size: 13px; word-break: break-all; }
-    .status-bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #f8fafc; border: 1px solid #e5ecf3; border-radius: 10px; margin-top: 22px; }
+    .endpoint { background: #f3f7ff; border: 1px solid #d9e7ff; padding: 12px 14px; border-radius: 10px; font-family: monospace; font-size: 13px; word-break: break-all; margin-top: 12px; }
+    .status-bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #f8fafc; border: 1px solid #e5ecf3; border-radius: 10px; margin-top: 22px; flex-wrap: wrap; }
     .indicator { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; font-weight: 600; }
     .indicator .dot { width: 10px; height: 10px; border-radius: 50%; }
     .online { background: #e8f7ef; color: #1b6e34; }
@@ -37,13 +39,17 @@
     .icon-button { background: #eef2f7; color: #1f2933; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; }
     .message { flex: 1; color: #1f2933; font-size: 13px; min-height: 18px; }
     .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #eef2f7; font-size: 12px; margin-left: 6px; }
+    .api-key-hint { font-size: 12px; color: #627384; margin-top: 4px; }
+    .provider-info { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 13px; }
+    .provider-info .check { color: #22c55e; }
+    .provider-info .cross { color: #e35d6a; }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Puter Local Model Emulator</h1>
-      <p class="muted">Configure the OpenAI-compatible endpoint backed by Puter AI.</p>
+      <h1>Virtual Model Emulator</h1>
+      <p class="muted">OpenAI-compatible endpoint powered by LiteLLM. Supports 100+ AI providers.</p>
     </header>
 
     <div class="section">
@@ -57,34 +63,47 @@
     </div>
 
     <div class="section">
-      <label>Puter Model</label>
+      <label>Provider</label>
+      <div class="row">
+        <select id="provider-select">
+          <option value="">-- Select a provider --</option>
+        </select>
+        <button id="test-connection" class="secondary">Test Connection</button>
+      </div>
+      <div id="provider-info" class="provider-info"></div>
+    </div>
+
+    <div class="section">
+      <label>Model</label>
       <div class="row">
         <div class="search-dropdown">
-          <input type="text" id="model-select" autocomplete="off">
-          <div id="puter-models-list" class="dropdown-menu"></div>
+          <input type="text" id="model-select" autocomplete="off" placeholder="Select a model...">
+          <div id="models-list" class="dropdown-menu"></div>
         </div>
-        <button id="refresh-models" class="secondary">Refresh Models</button>
+        <button id="refresh-models" class="secondary">Refresh</button>
       </div>
     </div>
 
     <div class="section">
-      <label>Spoofed OpenAI Model ID</label>
+      <label>API Key Environment Variable</label>
       <div class="row">
-        <div class="search-dropdown">
-          <input type="text" id="spoofed-model" autocomplete="off">
-          <div id="common-models" class="dropdown-menu"></div>
-        </div>
+        <input type="text" id="api-key-env" placeholder="e.g., OPENAI_API_KEY">
         <button id="start-stop" class="primary">Start</button>
       </div>
+      <p class="api-key-hint">The server reads the API key from this environment variable. Set it in your .env file or system environment.</p>
+    </div>
+
+    <div class="endpoint" id="endpoint-display">
+      Endpoint: http://localhost:11434/v1/chat/completions
     </div>
 
     <div class="status-bar">
-      <div id="puter-indicator" class="indicator offline">
+      <div id="provider-indicator" class="indicator offline">
         <span class="dot"></span>
-        <span class="indicator-text">Puter Offline</span>
+        <span class="indicator-text">Provider Offline</span>
       </div>
       <div id="emulator-pill" class="pill">Emulator stopped</div>
-      <button id="refresh-health" class="icon-button" title="Refresh status">⟳</button>
+      <button id="refresh-health" class="icon-button" title="Refresh status">&#x21bb;</button>
       <div id="status-message" class="message"></div>
     </div>
   </div>
@@ -92,33 +111,37 @@
   <script>
     const presetSelect = document.getElementById('preset-select');
     const presetActionBtn = document.getElementById('preset-action');
+    const providerSelect = document.getElementById('provider-select');
+    const testConnectionBtn = document.getElementById('test-connection');
+    const providerInfoEl = document.getElementById('provider-info');
     const modelSelect = document.getElementById('model-select');
-    const modelDatalist = document.getElementById('puter-models-list');
+    const modelsList = document.getElementById('models-list');
     const refreshModelsBtn = document.getElementById('refresh-models');
-    const spoofedInput = document.getElementById('spoofed-model');
-    const spoofedList = document.getElementById('common-models');
+    const apiKeyEnvInput = document.getElementById('api-key-env');
     const startStopBtn = document.getElementById('start-stop');
-    const indicatorEl = document.getElementById('puter-indicator');
+    const endpointDisplay = document.getElementById('endpoint-display');
+    const indicatorEl = document.getElementById('provider-indicator');
     const indicatorText = indicatorEl.querySelector('.indicator-text');
     const emulatorPill = document.getElementById('emulator-pill');
     const refreshHealthBtn = document.getElementById('refresh-health');
     const statusMessage = document.getElementById('status-message');
 
-    const BLOCKED_MODELS = ['abuse', 'costly', 'fake', 'model-fallback-test-1', 'usage-limited'];
     let presets = [];
+    let providers = [];
     let models = [];
     let emulatorActive = false;
-    let puterOnline = false;
+    let providerOnline = false;
 
     function setMessage(text) {
       statusMessage.textContent = text || '';
     }
 
-    function setIndicator(online) {
-      puterOnline = online;
+    function setIndicator(online, providerName) {
+      providerName = providerName || 'Provider';
+      providerOnline = online;
       indicatorEl.classList.toggle('online', online);
       indicatorEl.classList.toggle('offline', !online);
-      indicatorText.textContent = online ? 'Puter Online' : 'Puter Offline';
+      indicatorText.textContent = online ? (providerName + ' Online') : (providerName + ' Offline');
     }
 
     function setEmulatorState(active) {
@@ -129,41 +152,58 @@
       startStopBtn.classList.toggle('primary', !active);
     }
 
-    function ensureModelInSelect(modelId) {
-      if (!modelId || BLOCKED_MODELS.includes(modelId)) return;
-      const exists = models.some(model => model.id === modelId);
-      if (!exists) {
-        models.push({ id: modelId, label: `${modelId} (cached)` });
+    function updateProviderInfo(provider) {
+      if (!provider) {
+        providerInfoEl.innerHTML = '';
+        return;
       }
+      var hasKey = provider.hasApiKey;
+      var icon = hasKey ? '<span class="check">&#x2713;</span>' : '<span class="cross">&#x2717;</span>';
+      providerInfoEl.innerHTML = icon + ' API Key (' + provider.envVar + '): ' + (hasKey ? 'Found in environment' : 'Not set - add to .env file');
     }
 
-    function getFilteredModels(query = '') {
-      const lower = query.trim().toLowerCase();
+    function populateProviders() {
+      providerSelect.innerHTML = '<option value="">-- Select a provider --</option>';
+      providers.forEach(function(provider) {
+        var opt = document.createElement('option');
+        opt.value = provider.id;
+        opt.textContent = provider.name + (provider.hasApiKey ? ' \u2713' : '');
+        providerSelect.appendChild(opt);
+      });
+    }
+
+    function getFilteredModels(query) {
+      query = query || '';
+      var providerId = providerSelect.value;
+      var lower = query.trim().toLowerCase();
+
       return models
-        .filter(model => !BLOCKED_MODELS.includes(model.id))
-        .filter(model => {
+        .filter(function(model) { return !providerId || model.provider === providerId; })
+        .filter(function(model) {
           if (!lower) return true;
-          const label = model.label || model.id;
-          return label.toLowerCase().includes(lower) || model.id.toLowerCase().includes(lower);
+          var label = model.label || model.id;
+          return label.toLowerCase().indexOf(lower) !== -1 || model.id.toLowerCase().indexOf(lower) !== -1;
         });
     }
 
     function renderDropdown(listEl, options, onSelect) {
       listEl.innerHTML = '';
-      options.forEach(option => {
-        const item = document.createElement('div');
+      options.forEach(function(option) {
+        var item = document.createElement('div');
         item.className = 'dropdown-item';
-        item.textContent = option.label || option.id || option.value || '';
-        item.addEventListener('click', () => {
+        var label = option.label || option.id || '';
+        var providerBadge = option.providerName ? '<span class="provider-badge">' + option.providerName + '</span>' : '';
+        item.innerHTML = label + providerBadge;
+        item.addEventListener('click', function() {
           onSelect(option);
           listEl.classList.remove('open');
         });
         listEl.appendChild(item);
       });
       if (options.length === 0) {
-        const empty = document.createElement('div');
+        var empty = document.createElement('div');
         empty.className = 'dropdown-item';
-        empty.textContent = 'No matches';
+        empty.textContent = 'No models available';
         empty.style.color = '#627384';
         empty.style.cursor = 'default';
         listEl.appendChild(empty);
@@ -171,7 +211,7 @@
     }
 
     function setupSearchDropdown(inputEl, listEl, getOptions, onSelect) {
-      let open = false;
+      var open = false;
 
       function openMenu() {
         listEl.classList.add('open');
@@ -187,12 +227,12 @@
         renderDropdown(listEl, getOptions(inputEl.value), onSelect);
       }
 
-      inputEl.addEventListener('input', () => {
+      inputEl.addEventListener('input', function() {
         refreshOptions();
         openMenu();
       });
 
-      inputEl.addEventListener('click', (e) => {
+      inputEl.addEventListener('click', function(e) {
         if (open) {
           closeMenu();
         } else {
@@ -202,34 +242,21 @@
         e.stopPropagation();
       });
 
-      listEl.addEventListener('click', (e) => {
+      listEl.addEventListener('click', function(e) {
         e.stopPropagation();
       });
 
-      document.addEventListener('click', () => {
+      document.addEventListener('click', function() {
         if (open) closeMenu();
       });
 
-      return { refreshOptions, closeMenu };
+      return { refreshOptions: refreshOptions, closeMenu: closeMenu };
     }
-
-    const spoofedOptions = [
-      { id: 'gpt-4o', label: 'OpenAI GPT-4o' },
-      { id: 'claude-3-5-sonnet-20241022', label: 'Anthropic Claude 3.5 Sonnet' },
-      { id: 'gemini-1.5-pro', label: 'Google Gemini 1.5 Pro' },
-      { id: 'llama-3.3-70b-instruct', label: 'Meta Llama 3.3 70B' },
-      { id: 'mistral-large-latest', label: 'Mistral Large' },
-      { id: 'command-r-plus', label: 'Cohere Command R+' },
-      { id: 'grok-2', label: 'xAI Grok 2' },
-      { id: 'deepseek-chat', label: 'DeepSeek Chat' },
-      { id: 'qwen-max', label: 'Alibaba Qwen Max' },
-      { id: 'jamba-1.5-large', label: 'AI21 Jamba 1.5' }
-    ];
 
     function populatePresets(selectedId) {
       presetSelect.innerHTML = '<option value="">-- No preset selected --</option>';
-      presets.forEach(preset => {
-        const opt = document.createElement('option');
+      presets.forEach(function(preset) {
+        var opt = document.createElement('option');
         opt.value = preset.id;
         opt.textContent = preset.name;
         presetSelect.appendChild(opt);
@@ -243,159 +270,257 @@
     }
 
     function applyPreset(presetId) {
-      const preset = presets.find(p => p.id === presetId);
+      var preset = presets.find(function(p) { return p.id === presetId; });
       if (!preset) return;
-      ensureModelInSelect(preset.puterModelId);
-      modelSelect.value = preset.puterModelId;
-      spoofedInput.value = preset.spoofedOpenAIModelId || '';
+
+      providerSelect.value = preset.provider || '';
+      modelSelect.value = preset.model || '';
+      apiKeyEnvInput.value = preset.apiKeyEnvVar || '';
+
+      var provider = providers.find(function(p) { return p.id === preset.provider; });
+      if (provider) {
+        updateProviderInfo(provider);
+      }
+
       modelDropdown.refreshOptions();
-      spoofDropdown.refreshOptions();
       presetActionBtn.textContent = 'Edit';
-      setMessage(`Loaded preset "${preset.name}"`);
+      setMessage('Loaded preset "' + preset.name + '"');
     }
 
-    async function fetchState(force = false) {
-      const res = await fetch(`/config/state${force ? '?force=true' : ''}`);
-      if (!res.ok) throw new Error('Failed to load state');
-      return res.json();
+    function fetchState(force) {
+      var url = '/config/state' + (force ? '?force=true' : '');
+      return fetch(url).then(function(res) {
+        if (!res.ok) throw new Error('Failed to load state');
+        return res.json();
+      });
     }
 
-    async function saveConfig() {
-      const body = {
-        puterModelId: modelSelect.value,
-        spoofedOpenAIModelId: spoofedInput.value
+    function saveConfig() {
+      var body = {
+        provider: providerSelect.value,
+        model: modelSelect.value,
+        apiKeyEnvVar: apiKeyEnvInput.value
       };
-      await fetch('/config/save', {
+      return fetch('/config/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
     }
 
-    async function handleStartStop() {
-      const puterModelId = modelSelect.value;
-      if (!puterModelId) {
-        setMessage('Select a Puter model first.');
+    function handleStartStop() {
+      var provider = providerSelect.value;
+      var model = modelSelect.value;
+
+      if (!provider) {
+        setMessage('Select a provider first.');
+        return;
+      }
+      if (!model) {
+        setMessage('Select a model first.');
         return;
       }
 
       startStopBtn.disabled = true;
-      try {
-        if (emulatorActive) {
-          const res = await fetch('/emulator/stop', { method: 'POST' });
-          const data = await res.json();
-          if (data.success) {
-            setEmulatorState(false);
-            setMessage('Emulator stopped.');
-          } else {
-            setMessage(data.error || 'Failed to stop emulator.');
-          }
-        } else {
-          await saveConfig();
-          const res = await fetch('/emulator/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ puterModelId, spoofedOpenAIModelId: spoofedInput.value })
+
+      if (emulatorActive) {
+        fetch('/emulator/stop', { method: 'POST' })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.success) {
+              setEmulatorState(false);
+              setMessage('Emulator stopped.');
+            } else {
+              setMessage(data.error || 'Failed to stop emulator.');
+            }
+          })
+          .catch(function(err) {
+            setMessage(err.message);
+          })
+          .finally(function() {
+            startStopBtn.disabled = false;
           });
-          const data = await res.json();
-          if (data.success) {
-            setEmulatorState(true);
-            setIndicator(true);
-            setMessage('Emulator started.');
-          } else {
-            setMessage(data.error || 'Failed to start emulator.');
-          }
-        }
-      } catch (err) {
-        setMessage(err.message);
-      } finally {
-        startStopBtn.disabled = false;
+      } else {
+        saveConfig()
+          .then(function() {
+            return fetch('/emulator/start', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                provider: provider,
+                model: model,
+                apiKeyEnvVar: apiKeyEnvInput.value
+              })
+            });
+          })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.success) {
+              setEmulatorState(true);
+              var providerInfo = providers.find(function(p) { return p.id === provider; });
+              setIndicator(true, providerInfo ? providerInfo.name : provider);
+              setMessage('Emulator started.');
+            } else {
+              setMessage(data.error || 'Failed to start emulator.');
+            }
+          })
+          .catch(function(err) {
+            setMessage(err.message);
+          })
+          .finally(function() {
+            startStopBtn.disabled = false;
+          });
       }
     }
 
-    async function refreshModels(force = false) {
+    function testConnection() {
+      var provider = providerSelect.value;
+      if (!provider) {
+        setMessage('Select a provider first.');
+        return;
+      }
+
+      testConnectionBtn.disabled = true;
+      testConnectionBtn.textContent = 'Testing...';
+
+      fetch('/health')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          var providerInfo = providers.find(function(p) { return p.id === provider; });
+          setIndicator(data.online === true, providerInfo ? providerInfo.name : provider);
+          setMessage(data.message || 'Connection tested.');
+        })
+        .catch(function(err) {
+          setIndicator(false);
+          setMessage('Connection test failed: ' + err.message);
+        })
+        .finally(function() {
+          testConnectionBtn.disabled = false;
+          testConnectionBtn.textContent = 'Test Connection';
+        });
+    }
+
+    function refreshModels(force) {
       refreshModelsBtn.disabled = true;
-      try {
-        const res = await fetch(`/models${force ? '?force=true' : ''}`);
-        const data = await res.json();
-        models = data.models || [];
-        modelDropdown.refreshOptions();
-        setIndicator(data.puterOnline !== false);
-        setMessage(force ? 'Models refreshed from Puter.' : 'Models loaded.');
-      } catch (err) {
-        setMessage('Failed to load models: ' + err.message);
-      } finally {
-        refreshModelsBtn.disabled = false;
-      }
+      var provider = providerSelect.value || '';
+      var url = '/models?force=' + (force ? 'true' : 'false') + (provider ? '&provider=' + provider : '');
+
+      fetch(url)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          models = data.models || [];
+          modelDropdown.refreshOptions();
+          setMessage(force ? 'Models refreshed.' : 'Models loaded.');
+        })
+        .catch(function(err) {
+          setMessage('Failed to load models: ' + err.message);
+        })
+        .finally(function() {
+          refreshModelsBtn.disabled = false;
+        });
     }
 
-    async function refreshHealth() {
-      try {
-        const res = await fetch('/health');
-        const data = await res.json();
-        setIndicator(data.online === true);
-        setMessage(data.message || 'Health checked.');
-      } catch (err) {
-        setIndicator(false);
-        setMessage('Unable to reach Puter: ' + err.message);
-      }
+    function refreshHealth() {
+      fetch('/health')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          var provider = providerSelect.value;
+          var providerInfo = providers.find(function(p) { return p.id === provider; });
+          setIndicator(data.online === true, providerInfo ? providerInfo.name : provider);
+          setMessage(data.message || 'Health checked.');
+        })
+        .catch(function(err) {
+          setIndicator(false);
+          setMessage('Unable to reach provider: ' + err.message);
+        });
     }
 
-    async function savePreset(existingId) {
-      const name = prompt(existingId ? 'Rename preset' : 'Preset name');
+    function savePreset(existingId) {
+      var name = prompt(existingId ? 'Rename preset' : 'Preset name');
       if (!name) return;
-      const body = {
+
+      var body = {
         id: existingId || undefined,
         name: name.trim(),
-        puterModelId: modelSelect.value,
-        spoofedOpenAIModelId: spoofedInput.value
+        provider: providerSelect.value,
+        model: modelSelect.value,
+        apiKeyEnvVar: apiKeyEnvInput.value
       };
-      const res = await fetch('/config/savePreset', {
+
+      fetch('/config/savePreset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (existingId) {
-          presets = presets.map(p => p.id === existingId ? data.preset : p);
-          populatePresets(existingId);
-          setMessage('Preset updated.');
-        } else {
-          presets.push(data.preset);
-          populatePresets(data.preset.id);
-          setMessage('Preset saved.');
-        }
-      } else {
-        setMessage(data.error || 'Failed to save preset.');
-      }
+      })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data.success) {
+            if (existingId) {
+              presets = presets.map(function(p) { return p.id === existingId ? data.preset : p; });
+              populatePresets(existingId);
+              setMessage('Preset updated.');
+            } else {
+              presets.push(data.preset);
+              populatePresets(data.preset.id);
+              setMessage('Preset saved.');
+            }
+          } else {
+            setMessage(data.error || 'Failed to save preset.');
+          }
+        })
+        .catch(function(err) {
+          setMessage('Failed to save preset: ' + err.message);
+        });
     }
 
-    async function init() {
-      try {
-        const state = await fetchState();
-        presets = state.presets || [];
-        models = state.models || [];
-        populatePresets();
-        modelDropdown.refreshOptions(); // Don't auto-select, let user choose
-        spoofDropdown.refreshOptions(); // Don't auto-fill spoofed model field - let user choose
-        setEmulatorState(state.emulatorActive);
-        setIndicator(state.puterOnline !== false);
-        setMessage('Ready.');
-        await refreshHealth();
-      } catch (err) {
-        setMessage('Failed to load state: ' + err.message);
-      }
+    function init() {
+      fetchState(false)
+        .then(function(state) {
+          presets = state.presets || [];
+          providers = state.providers || [];
+          models = state.models || [];
+
+          populateProviders();
+          populatePresets();
+
+          if (state.config) {
+            providerSelect.value = state.config.provider || '';
+            modelSelect.value = state.config.model || '';
+            apiKeyEnvInput.value = state.config.apiKeyEnvVar || '';
+
+            var provider = providers.find(function(p) { return p.id === state.config.provider; });
+            if (provider) {
+              updateProviderInfo(provider);
+            }
+          }
+
+          modelDropdown.refreshOptions();
+          setEmulatorState(state.emulatorActive);
+
+          if (state.endpoint) {
+            endpointDisplay.textContent = 'Endpoint: ' + state.endpoint;
+          }
+
+          var currentProvider = providers.find(function(p) { return p.id === providerSelect.value; });
+          setIndicator(state.providerOnline !== false, currentProvider ? currentProvider.name : 'Provider');
+
+          setMessage('Ready.');
+          return refreshHealth();
+        })
+        .catch(function(err) {
+          setMessage('Failed to load state: ' + err.message);
+        });
     }
 
-    presetSelect.addEventListener('change', () => {
+    // Event listeners
+    presetSelect.addEventListener('change', function() {
       if (presetSelect.value) {
         applyPreset(presetSelect.value);
       }
       presetActionBtn.textContent = presetSelect.value ? 'Edit' : 'Save';
     });
 
-    presetActionBtn.addEventListener('click', () => {
+    presetActionBtn.addEventListener('click', function() {
       if (presetSelect.value) {
         savePreset(presetSelect.value);
       } else {
@@ -403,31 +528,29 @@
       }
     });
 
-    refreshModelsBtn.addEventListener('click', () => refreshModels(true));
+    providerSelect.addEventListener('change', function() {
+      var provider = providers.find(function(p) { return p.id === providerSelect.value; });
+      updateProviderInfo(provider);
+
+      if (provider) {
+        apiKeyEnvInput.value = provider.envVar;
+      }
+
+      modelSelect.value = '';
+      modelDropdown.refreshOptions();
+    });
+
+    testConnectionBtn.addEventListener('click', testConnection);
+    refreshModelsBtn.addEventListener('click', function() { refreshModels(true); });
     startStopBtn.addEventListener('click', handleStartStop);
     refreshHealthBtn.addEventListener('click', refreshHealth);
 
-    const modelDropdown = setupSearchDropdown(
+    var modelDropdown = setupSearchDropdown(
       modelSelect,
-      modelDatalist,
-      (query) => getFilteredModels(query),
-      (option) => {
-        modelSelect.value = option.id || option.value || '';
-      }
-    );
-
-    const spoofDropdown = setupSearchDropdown(
-      spoofedInput,
-      spoofedList,
-      (query) => {
-        const lower = query.trim().toLowerCase();
-        return spoofedOptions.filter(option => {
-          if (!lower) return true;
-          return option.id.toLowerCase().includes(lower) || (option.label && option.label.toLowerCase().includes(lower));
-        });
-      },
-      (option) => {
-        spoofedInput.value = option.id || option.value || '';
+      modelsList,
+      function(query) { return getFilteredModels(query); },
+      function(option) {
+        modelSelect.value = option.id || '';
       }
     );
 

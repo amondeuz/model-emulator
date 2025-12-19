@@ -4,13 +4,13 @@
     {
       "method": "log",
       "params": {
-        "raw": "Starting Puter Local Model Emulator..."
+        "raw": "Starting Virtual Model Emulator..."
       }
     },
     {
       "method": "shell.run",
       "params": {
-        "message": "node server/index.js",
+        "message": "python -m server.main",
         "on": [
           {
             "event": "/http:\\/\\/localhost:[0-9]+\\/config\\.html/",

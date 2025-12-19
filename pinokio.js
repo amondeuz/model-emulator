@@ -1,5 +1,5 @@
-const title = 'Puter Local Model Emulator';
-const description = 'Local OpenAI-compatible endpoint backed by Puter AI.';
+const title = 'Virtual Model Emulator';
+const description = 'OpenAI-compatible endpoint powered by LiteLLM. Supports 100+ AI providers.';
 const icon = 'icon.png';
 
 module.exports = {
@@ -18,7 +18,8 @@ module.exports = {
       ];
     }
 
-    const installed = info.exists('node_modules');
+    // Check if dependencies are installed (requirements.txt exists means we should try to install/run)
+    const installed = info.exists('requirements.txt');
     if (!installed) {
       return [
         { text: 'Loading...', icon: 'fa-solid fa-robot', href: 'install.json', default: true },

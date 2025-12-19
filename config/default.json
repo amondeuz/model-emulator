@@ -1,9 +1,8 @@
 {
   "port": 11434,
-  "backend": "puter",
-  "puterModel": "gpt-4o",
-  "spoofedOpenAIModelId": "gpt-4o-mini",
-  "enabled": true,
+  "provider": "openai",
+  "model": "gpt-4",
+  "apiKeyEnvVar": "OPENAI_API_KEY",
   "emulatorActive": false,
   "lastConfig": null,
   "logging": {
